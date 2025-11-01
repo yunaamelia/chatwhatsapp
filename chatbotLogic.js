@@ -311,6 +311,40 @@ class ChatbotLogic {
       return UIMessages.orderNotPending(approveOrderId);
     }
 
+    // Double-check payment status via Xendit API
+    const paymentData = this.sessionManager.getPaymentMethod(targetCustomerId);
+    if (paymentData.invoiceId) {
+      try {
+        const paymentStatus = await this.xenditService.checkPaymentStatus(
+          paymentData.invoiceId
+        );
+
+        if (paymentStatus.status !== "SUCCEEDED") {
+          this.logger.logSecurity(
+            adminId,
+            "payment_not_verified",
+            "payment_status_mismatch",
+            {
+              orderId: approveOrderId,
+              invoiceId: paymentData.invoiceId,
+              status: paymentStatus.status,
+            }
+          );
+          return `❌ *Payment Belum Berhasil*\n\nOrder: ${approveOrderId}\nStatus: ${paymentStatus.status}\n\nTidak bisa approve sebelum payment SUCCEEDED.`;
+        }
+
+        console.log(
+          `✅ Payment verified for ${approveOrderId}: ${paymentStatus.status}`
+        );
+      } catch (error) {
+        this.logger.logError(adminId, error, {
+          orderId: approveOrderId,
+          action: "payment_double_check",
+        });
+        return `⚠️ *Gagal Verifikasi Payment*\n\nError: ${error.message}\n\nSilakan cek manual di dashboard Xendit.`;
+      }
+    }
+
     const cart = this.sessionManager.getCart(targetCustomerId);
     const ProductDelivery = require("./productDelivery");
     const productDelivery = new ProductDelivery();

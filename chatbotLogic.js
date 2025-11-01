@@ -13,18 +13,45 @@ const UIMessages = require("./lib/uiMessages");
 const PaymentMessages = require("./lib/paymentMessages");
 const PaymentHandlers = require("./lib/paymentHandlers");
 const InputValidator = require("./lib/inputValidator");
+const TransactionLogger = require("./lib/transactionLogger");
 
 class ChatbotLogic {
   constructor(sessionManager) {
     this.sessionManager = sessionManager;
     this.xenditService = XenditService;
-    this.paymentHandlers = new PaymentHandlers(XenditService, sessionManager);
+    this.validator = new InputValidator(); // Instance for rate limiting
+    this.logger = new TransactionLogger();
+    this.paymentHandlers = new PaymentHandlers(
+      XenditService,
+      sessionManager,
+      this.logger
+    );
   }
 
   /**
    * Process incoming message and generate response
    */
   async processMessage(customerId, message) {
+    // Check rate limiting
+    const rateLimitCheck = this.validator.canSendMessage(customerId);
+    if (!rateLimitCheck.allowed) {
+      this.logger.logSecurity(
+        customerId,
+        "rate_limit_exceeded",
+        rateLimitCheck.reason,
+        {
+          limit: this.validator.MESSAGE_LIMIT,
+        }
+      );
+      return rateLimitCheck.message;
+    }
+
+    // Check error cooldown
+    const cooldownCheck = this.validator.isInCooldown(customerId);
+    if (cooldownCheck.inCooldown) {
+      return cooldownCheck.message;
+    }
+
     // Validate and sanitize input
     const sanitizedMessage = InputValidator.sanitizeMessage(message);
     if (!sanitizedMessage) {
@@ -180,6 +207,23 @@ class ChatbotLogic {
    * Process checkout and show payment options
    */
   processCheckout(customerId) {
+    // Check order rate limit
+    const orderLimitCheck = this.validator.canPlaceOrder(customerId);
+    if (!orderLimitCheck.allowed) {
+      this.logger.logSecurity(
+        customerId,
+        "order_limit_exceeded",
+        orderLimitCheck.reason,
+        {
+          limit: this.validator.ORDER_LIMIT,
+        }
+      );
+      return {
+        message: orderLimitCheck.message,
+        qrisData: null,
+      };
+    }
+
     const cart = this.sessionManager.getCart(customerId);
     const totalUSD = cart.reduce((sum, item) => sum + item.price, 0);
     const orderId = `ORD-${Date.now()}-${customerId.slice(-4)}`;
@@ -188,6 +232,10 @@ class ChatbotLogic {
     this.sessionManager.setStep(customerId, "select_payment");
 
     const totalIDR = this.xenditService.convertToIDR(totalUSD);
+
+    // Log order creation
+    this.logger.logOrder(customerId, orderId, cart, totalUSD, totalIDR);
+
     const orderSummary = UIMessages.orderSummary(orderId, cart, totalIDR);
     const paymentMenu = PaymentMessages.paymentMethodSelection(
       orderId,
@@ -216,6 +264,11 @@ class ChatbotLogic {
    */
   async handleAdminApprove(adminId, message) {
     if (!InputValidator.isAdmin(adminId)) {
+      this.logger.logSecurity(
+        adminId,
+        "unauthorized_admin_access",
+        "not_in_whitelist"
+      );
       return UIMessages.unauthorized();
     }
 
@@ -247,6 +300,10 @@ class ChatbotLogic {
     );
 
     if (!deliveryResult.success) {
+      this.logger.logError(targetCustomerId, new Error("Delivery failed"), {
+        orderId: approveOrderId,
+        reason: "no_products_available",
+      });
       return UIMessages.deliveryFailed(approveOrderId);
     }
 
@@ -254,6 +311,13 @@ class ChatbotLogic {
       deliveryResult,
       approveOrderId
     );
+
+    // Log admin approval and delivery
+    this.logger.logAdminAction(adminId, "approve_order", approveOrderId, {
+      customerId: targetCustomerId,
+      products: cart.map((p) => p.name),
+    });
+    this.logger.logDelivery(targetCustomerId, approveOrderId, cart);
 
     this.sessionManager.clearCart(targetCustomerId);
     this.sessionManager.setStep(targetCustomerId, "menu");

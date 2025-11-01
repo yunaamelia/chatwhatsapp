@@ -1,0 +1,23 @@
+{
+  "name": "whatsapp-shopping-chatbot",
+  "version": "1.0.0",
+  "description": "WhatsApp Shopping Chatbot Assistant for selling premium accounts and virtual credit cards",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "chatbot",
+    "shopping",
+    "assistant"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.1"
+  }
+}

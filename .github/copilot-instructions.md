@@ -8,6 +8,14 @@
 2. **Research before implementing** - Always check Context7 (#upstash/context7) for best practices when adding features
 3. **Reference memory** - Check agent memory for project context and previous decisions
 4. **Document in memory** - Update memory with implementation summaries, not user-facing responses
+5. **CHECK WORKFLOWS BEFORE PUSH** - Read `.github/memory/github-workflows-rules.md` for CI/CD requirements
+
+**GitHub Actions Rules (MUST FOLLOW):**
+- ✅ **File size limit:** Max 700 lines per .js file in `src/` (BLOCKING)
+- ✅ **No hardcoded secrets:** No `xnd_production`, hardcoded passwords (BLOCKING)
+- ✅ **ESLint clean:** 0 errors required (BLOCKING)
+- ✅ **Tests passing:** All 251 unit tests must pass (BLOCKING)
+- ⚠️ **Pre-push checklist:** Run `npm run lint && npm test` locally before pushing
 
 ## Architecture Overview
 
@@ -68,9 +76,12 @@ chatbot/
 **Handler Layer** (`src/handlers/`):
 
 - `CustomerHandler.js` - Menu, browsing, cart, checkout, order history
-- `AdminHandler.js` - 13 admin commands (approve, broadcast, stats, stock, settings, etc.)
+- `AdminHandler.js` - Admin commands (approve, broadcast, stats, stock, settings, etc.) - **MAX 700 LINES**
+- `AdminInventoryHandler.js` - Inventory management (addstock, stockreport, salesreport) - Split from AdminHandler
 - `ProductHandler.js` - Product management (add, edit, remove, fuzzy search)
 - `BaseHandler.js` - Abstract base class with common handler functionality
+
+**CRITICAL:** All files in `src/` must be < 700 lines (GitHub Actions requirement)
 
 **Service Layer** (`src/services/`):
 

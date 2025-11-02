@@ -172,6 +172,12 @@ client.on("error", (error) => {
 const shutdown = async (signal) => {
   console.log(`\n\n⚠️ Received ${signal}, shutting down gracefully...`);
 
+  // Clear cleanup intervals
+  if (global.cleanupIntervals) {
+    clearInterval(global.cleanupIntervals.sessionCleanup);
+    clearInterval(global.cleanupIntervals.rateLimitCleanup);
+  }
+
   // Stop payment reminder service
   if (paymentReminderService) {
     paymentReminderService.stop();

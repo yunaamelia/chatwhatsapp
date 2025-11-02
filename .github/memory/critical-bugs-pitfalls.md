@@ -185,6 +185,79 @@ XENDIT_SECRET_KEY=xnd_production_xxx
 
 ---
 
+## 6. Admin Command Case Sensitivity Bug
+
+**Date:** November 3, 2025  
+**Severity:** 🔴 CRITICAL - Admin commands not working  
+**Status:** ✅ Fixed
+
+### The Bug
+
+Admin commands like `/approve ORD-xxx-c.us` were not working because Order IDs were being lowercased.
+
+```javascript
+// BUG in chatbotLogic.js:
+const normalizedMessage = sanitizedMessage.toLowerCase().trim();
+// Result: "/approve ORD-1762110987875-c.us" → "/approve ord-1762110987875-c.us"
+
+// When searching Redis:
+session.orderId === "ORD-1762110987875-c.us"; // ✅ Stored (uppercase)
+message === "/approve ord-1762110987875-c.us"; // ❌ Searching (lowercase)
+// Result: Order not found!
+```
+
+### Impact
+
+- `/approve` command always returned "Order ID not found"
+- Admin couldn't approve payments
+- Customer orders stuck in "awaiting_admin_approval" state
+- Manual intervention required
+
+### Root Cause
+
+`chatbotLogic.js` was lowercasing **all** messages for consistency, but:
+
+- Order IDs are case-sensitive (contain uppercase "ORD-")
+- Admin commands may contain case-sensitive parameters
+- Only customer commands should be normalized to lowercase
+
+### Solution
+
+```javascript
+// FIXED: Preserve case for admin commands
+const normalizedMessage = sanitizedMessage.startsWith("/")
+  ? sanitizedMessage.trim() // Admin commands: preserve case
+  : sanitizedMessage.toLowerCase().trim(); // Customer commands: normalize
+```
+
+### Commits
+
+- `67be242` - Fixed admin command case sensitivity
+
+### Lesson Learned
+
+**When normalizing user input, consider:**
+
+1. **What data is case-sensitive?** (IDs, codes, URLs)
+2. **Which commands need exact matching?** (Admin commands)
+3. **Test with real data formats** (actual Order IDs from Redis)
+
+**Testing checklist:**
+
+- [ ] Test with uppercase Order ID
+- [ ] Test with lowercase command `/approve` (should work)
+- [ ] Test with mixed case Order ID parts
+- [ ] Check Redis data format before normalizing
+
+### How to Prevent
+
+1. Document data formats in code comments
+2. Test commands with actual production data
+3. Add integration tests for admin commands
+4. Log both original and normalized messages
+
+---
+
 ## Quick Checklist for Future Changes
 
 **Before deploying any pricing/payment changes:**

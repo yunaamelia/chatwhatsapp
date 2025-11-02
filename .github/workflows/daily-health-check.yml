@@ -1,0 +1,121 @@
+name: 📊 Daily Code Health Check
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    name: 🏥 Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 📊 Generate metrics
+        id: metrics
+        run: |
+          echo "Generating daily metrics..."
+
+          # Count total lines
+          total_lines=$(find src -name "*.js" -exec wc -l {} + | tail -1 | awk '{print $1}')
+          echo "total_lines=$total_lines" >> $GITHUB_OUTPUT
+
+          # Count files
+          total_files=$(find src -name "*.js" | wc -l)
+          echo "total_files=$total_files" >> $GITHUB_OUTPUT
+
+          # Average lines per file
+          avg_lines=$((total_lines / total_files))
+          echo "avg_lines=$avg_lines" >> $GITHUB_OUTPUT
+
+          # Count TODOs
+          todos=$(grep -r "TODO\|FIXME" src/ --include="*.js" | wc -l || echo "0")
+          echo "todos=$todos" >> $GITHUB_OUTPUT
+
+          # Count tests
+          test_files=$(find tests -name "*.js" -o -name "*.test.js" | wc -l)
+          echo "test_files=$test_files" >> $GITHUB_OUTPUT
+
+          echo "Daily metrics generated successfully"
+
+      - name: 🧪 Run full test suite
+        run: npm test
+        continue-on-error: true
+
+      - name: 🔐 Security audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: 📈 Check trends
+        run: |
+          echo "Checking code health trends..."
+
+          # Compare with last month
+          git log --since="30 days ago" --pretty=format: --numstat | \
+          awk '{added+=$1; removed+=$2} END {print "Added:", added, "Removed:", removed}'
+
+      - name: 📧 Generate health report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const totalLines = '${{ steps.metrics.outputs.total_lines }}';
+            const totalFiles = '${{ steps.metrics.outputs.total_files }}';
+            const avgLines = '${{ steps.metrics.outputs.avg_lines }}';
+            const todos = '${{ steps.metrics.outputs.todos }}';
+            const testFiles = '${{ steps.metrics.outputs.test_files }}';
+
+            const healthGrade = avgLines < 300 ? 'A' : avgLines < 500 ? 'B' : avgLines < 700 ? 'C' : 'D';
+
+            const report = `## 📊 Daily Code Health Report
+
+            **Date:** ${new Date().toISOString().split('T')[0]}
+            **Health Grade:** ${healthGrade}
+
+            ### 📈 Metrics
+            - Total Lines: ${totalLines}
+            - Total Files: ${totalFiles}
+            - Average Lines/File: ${avgLines}
+            - TODOs/FIXMEs: ${todos}
+            - Test Files: ${testFiles}
+
+            ### 🎯 Health Score
+            ${avgLines < 300 ? '✅ Excellent code organization' : ''}
+            ${avgLines >= 300 && avgLines < 500 ? '✅ Good code organization' : ''}
+            ${avgLines >= 500 && avgLines < 700 ? '⚠️ Consider refactoring' : ''}
+            ${avgLines >= 700 ? '❌ Files too large, refactor needed' : ''}
+
+            ### 💡 Recommendations
+            ${todos > 0 ? `- Address ${todos} TODOs/FIXMEs` : '- No pending TODOs'}
+            ${testFiles < totalFiles ? `- Add more tests (${testFiles}/${totalFiles})` : '- Test coverage looks good'}
+
+            ---
+            *Automated by GitHub Actions 🤖*
+            `;
+
+            // Create issue if health is poor
+            if (healthGrade === 'D' || todos > 20) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '⚠️ Code Health Alert - Action Required',
+                body: report,
+                labels: ['health-check', 'maintenance']
+              });
+            }
+
+            console.log(report);

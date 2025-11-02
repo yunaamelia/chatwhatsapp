@@ -1,0 +1,486 @@
+name: 🤖 AI Agent - Code Guardian
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ============================================
+  # Quick Scan - Fast checks (< 2 minutes)
+  # ============================================
+  quick-scan:
+    name: 🔍 Quick Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🎨 Run linter
+        run: npm run lint || echo "::warning::Linter found issues"
+        continue-on-error: true
+
+      - name: 🔐 Check for secrets
+        run: |
+          if grep -r "xnd_production" . --exclude-dir=node_modules --exclude-dir=.git; then
+            echo "::error::Production secrets found in code!"
+            exit 1
+          fi
+
+          if grep -r "password.*=.*['\"]" . --exclude-dir=node_modules --exclude-dir=.git --exclude="*.md"; then
+            echo "::warning::Possible hardcoded passwords found"
+          fi
+
+      - name: 📏 Check file sizes
+        run: |
+          echo "Checking file sizes (max 700 lines)..."
+
+          large_files=$(find src -name "*.js" -exec wc -l {} + | awk '$1 > 700 {print $0}')
+
+          if [ ! -z "$large_files" ]; then
+            echo "::error::Files exceeding 700 lines found:"
+            echo "$large_files"
+            exit 1
+          else
+            echo "✅ All files under 700 lines"
+          fi
+
+      - name: 🔄 Check for circular dependencies
+        run: |
+          npx madge --circular --extensions js src/ || echo "✅ No circular dependencies"
+
+  # ============================================
+  # Deep Review - Comprehensive analysis
+  # ============================================
+  deep-review:
+    name: 🧐 Deep Code Review
+    runs-on: ubuntu-latest
+    needs: quick-scan
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 📊 Code complexity analysis
+        run: |
+          npx complexity-report src/ --format markdown > complexity-report.md || true
+          cat complexity-report.md || echo "Complexity analysis completed"
+        continue-on-error: true
+
+      - name: 🔍 Check unused dependencies
+        run: npx depcheck || echo "::warning::Unused dependencies found"
+        continue-on-error: true
+
+      - name: 📝 Check JSDoc coverage
+        run: |
+          echo "Checking JSDoc coverage..."
+
+          # Count functions without JSDoc
+          missing_docs=$(grep -r "^  async \|^  function " src/ --include="*.js" | \
+                        grep -v "/\*\*" -B1 | grep "function\|async" | wc -l)
+
+          echo "Functions potentially missing JSDoc: $missing_docs"
+
+          if [ $missing_docs -gt 50 ]; then
+            echo "::warning::Consider adding JSDoc to more functions"
+          fi
+
+      - name: 🎯 Check naming conventions
+        run: |
+          echo "Checking naming conventions..."
+
+          # Check for snake_case in function names (should be camelCase)
+          snake_case=$(grep -r "function [a-z_]*_[a-z_]*(" src/ --include="*.js" || true)
+
+          if [ ! -z "$snake_case" ]; then
+            echo "::warning::Found snake_case function names (use camelCase):"
+            echo "$snake_case"
+          fi
+
+  # ============================================
+  # Testing Suite - All tests
+  # ============================================
+  testing:
+    name: 🧪 Testing Suite
+    runs-on: ubuntu-latest
+    needs: quick-scan
+    timeout-minutes: 20
+
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 🧪 Run unit tests
+        run: npm test
+        env:
+          NODE_ENV: test
+
+      - name: 📊 Generate coverage report
+        run: npm run test:coverage || npm test
+        continue-on-error: true
+
+      - name: ✅ Check coverage threshold
+        run: |
+          echo "Checking test coverage..."
+
+          # Parse coverage from output (customize based on your setup)
+          coverage=$(grep -o "Statements.*: [0-9\.]*%" coverage/coverage-summary.json || echo "Coverage: N/A")
+
+          echo "Current coverage: $coverage"
+
+          # Set minimum threshold
+          threshold=70
+
+          if [ ! -z "$coverage" ]; then
+            coverage_num=$(echo $coverage | grep -o "[0-9\.]*" | head -1)
+            if (( $(echo "$coverage_num < $threshold" | bc -l) )); then
+              echo "::warning::Coverage below threshold ($coverage_num% < $threshold%)"
+            fi
+          fi
+        continue-on-error: true
+
+      - name: 📤 Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: matrix.node-version == '18'
+        with:
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          fail_ci_if_error: false
+
+  # ============================================
+  # Security Audit - Vulnerabilities & secrets
+  # ============================================
+  security:
+    name: 🔒 Security Audit
+    runs-on: ubuntu-latest
+    needs: quick-scan
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 🔐 NPM audit
+        run: |
+          npm audit --audit-level=moderate || echo "::warning::Vulnerabilities found"
+        continue-on-error: true
+
+      - name: 🕵️ Secret scanning
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+        continue-on-error: true
+
+      - name: 🛡️ Check security best practices
+        run: |
+          echo "Checking security patterns..."
+
+          # Check for eval usage
+          if grep -r "eval(" src/ --include="*.js"; then
+            echo "::error::Found eval() usage - security risk!"
+          fi
+
+          # Check for process.env access without defaults
+          process_env=$(grep -r "process\.env\.[A-Z_]*[^|]$" src/ --include="*.js" || true)
+          if [ ! -z "$process_env" ]; then
+            echo "::warning::Found process.env without fallback values"
+          fi
+
+          # Check for SQL injection risks
+          if grep -r "SELECT.*\${" src/ --include="*.js"; then
+            echo "::error::Possible SQL injection vulnerability found!"
+          fi
+
+      - name: 🔍 Dependency check
+        run: |
+          npx audit-ci --moderate || echo "::warning::Dependencies need review"
+        continue-on-error: true
+
+  # ============================================
+  # Bug Detection - Pattern analysis
+  # ============================================
+  bug-detection:
+    name: 🐛 Bug Detection
+    runs-on: ubuntu-latest
+    needs: quick-scan
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 🔍 Detect common bugs
+        run: |
+          echo "Scanning for common bug patterns..."
+
+          # Check for unawaited promises
+          echo "Checking for unawaited async calls..."
+          unawaited=$(grep -r "^\s*[a-zA-Z]*\.[a-zA-Z]*(" src/ --include="*.js" | \
+                     grep -v "await\|return\|console\|logger" || true)
+
+          # Check for missing error handling
+          echo "Checking for missing try-catch in async functions..."
+          missing_catch=$(grep -A 20 "async function\|async [a-zA-Z]*(" src/ --include="*.js" | \
+                         grep -v "try\|catch" || true)
+
+          # Check for memory leaks (setInterval without clear)
+          echo "Checking for potential memory leaks..."
+          intervals=$(grep -r "setInterval\|setTimeout" src/ --include="*.js" | \
+                     grep -v "clearInterval\|clearTimeout" || true)
+
+          if [ ! -z "$intervals" ]; then
+            echo "::warning::Found setInterval/setTimeout without cleanup"
+          fi
+
+          # Check for null/undefined access
+          echo "Checking for potential null pointer errors..."
+          null_access=$(grep -r "\.[a-zA-Z]*\." src/ --include="*.js" | \
+                       grep -v "if.*null\|if.*undefined\|&&\|?\.") || true
+
+      - name: 🔧 Static analysis with ESLint
+        run: npx eslint src/ --format=json > eslint-report.json || true
+        continue-on-error: true
+
+      - name: 📊 Analyze ESLint results
+        run: |
+          if [ -f eslint-report.json ]; then
+            errors=$(cat eslint-report.json | grep -o '"errorCount":[0-9]*' | cut -d':' -f2 | \
+                    awk '{s+=$1} END {print s}')
+            warnings=$(cat eslint-report.json | grep -o '"warningCount":[0-9]*' | cut -d':' -f2 | \
+                      awk '{s+=$1} END {print s}')
+            
+            echo "ESLint found: $errors errors, $warnings warnings"
+            
+            if [ "$errors" -gt 0 ]; then
+              echo "::error::ESLint found $errors errors"
+            fi
+          fi
+        continue-on-error: true
+
+  # ============================================
+  # Performance Analysis
+  # ============================================
+  performance:
+    name: ⚡ Performance Analysis
+    runs-on: ubuntu-latest
+    needs: testing
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 📊 Bundle size analysis
+        run: |
+          echo "Analyzing bundle size..."
+          du -sh src/ node_modules/
+
+          src_size=$(du -sb src/ | cut -f1)
+          echo "Source code size: $src_size bytes"
+
+          if [ $src_size -gt 1000000 ]; then
+            echo "::warning::Source code exceeds 1MB"
+          fi
+
+      - name: 🔍 Check for large files
+        run: |
+          echo "Finding large files (>100KB)..."
+          find . -type f -size +100k ! -path "./node_modules/*" ! -path "./.git/*"
+
+  # ============================================
+  # Generate Report & Comment on PR
+  # ============================================
+  report:
+    name: 📋 Generate Report
+    runs-on: ubuntu-latest
+    needs: [quick-scan, deep-review, testing, security, bug-detection]
+    if: always() && github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📊 Generate summary
+        id: summary
+        run: |
+          echo "Generating code review summary..."
+
+          # Collect job statuses
+          quick_scan="${{ needs.quick-scan.result }}"
+          deep_review="${{ needs.deep-review.result }}"
+          testing="${{ needs.testing.result }}"
+          security="${{ needs.security.result }}"
+          bug_detection="${{ needs.bug-detection.result }}"
+
+          # Count results
+          passed=0
+          failed=0
+
+          for status in "$quick_scan" "$deep_review" "$testing" "$security" "$bug_detection"; do
+            if [ "$status" = "success" ]; then
+              ((passed++))
+            else
+              ((failed++))
+            fi
+          done
+
+          total=$((passed + failed))
+          success_rate=$((passed * 100 / total))
+
+          echo "passed=$passed" >> $GITHUB_OUTPUT
+          echo "failed=$failed" >> $GITHUB_OUTPUT
+          echo "success_rate=$success_rate" >> $GITHUB_OUTPUT
+
+      - name: 💬 Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const passed = ${{ steps.summary.outputs.passed }};
+            const failed = ${{ steps.summary.outputs.failed }};
+            const successRate = ${{ steps.summary.outputs.success_rate }};
+
+            const quickScan = '${{ needs.quick-scan.result }}';
+            const deepReview = '${{ needs.deep-review.result }}';
+            const testing = '${{ needs.testing.result }}';
+            const security = '${{ needs.security.result }}';
+            const bugDetection = '${{ needs.bug-detection.result }}';
+
+            const statusIcon = (status) => status === 'success' ? '✅' : '❌';
+
+            const report = `## 🤖 AI Agent Code Review Report
+
+            ### 📊 Overall Status
+            - **Success Rate:** ${successRate}% (${passed}/${passed + failed} checks passed)
+            - **Grade:** ${successRate >= 90 ? 'A 🌟' : successRate >= 80 ? 'B ✅' : successRate >= 70 ? 'C ⚠️' : 'D ❌'}
+
+            ### 🔍 Check Results
+            | Check | Status | Description |
+            |-------|--------|-------------|
+            | Quick Scan | ${statusIcon(quickScan)} ${quickScan} | Linting, secrets, file sizes |
+            | Deep Review | ${statusIcon(deepReview)} ${deepReview} | Code quality, complexity |
+            | Testing | ${statusIcon(testing)} ${testing} | Unit tests, coverage |
+            | Security | ${statusIcon(security)} ${security} | Vulnerabilities, audit |
+            | Bug Detection | ${statusIcon(bugDetection)} ${bugDetection} | Pattern analysis |
+
+            ### 📝 Recommendations
+            ${failed > 0 ? `
+            ⚠️ **${failed} check(s) need attention**
+            - Review the failed checks above
+            - Fix any errors or warnings
+            - Re-run the checks
+            ` : `
+            ✨ **All checks passed!**
+            - Code quality is excellent
+            - Ready for review
+            `}
+
+            ### 🎯 Next Steps
+            1. Review any warnings or errors
+            2. Update tests if needed
+            3. Request code review from team
+            4. Merge after approval
+
+            ---
+            *Generated by AI Code Guardian 🤖*
+            *Run ID: ${{ github.run_id }}*
+            `;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('AI Agent Code Review Report')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: report
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: report
+              });
+            }

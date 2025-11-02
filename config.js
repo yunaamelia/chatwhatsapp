@@ -4,10 +4,10 @@
  * TODO: Update all imports to use new config files directly
  */
 
-const appConfig = require('./src/config/app.config');
-const paymentConfig = require('./src/config/payment.config');
-const productsConfig = require('./src/config/products.config');
-const ProductService = require('./src/services/product/ProductService');
+const appConfig = require("./src/config/app.config");
+const paymentConfig = require("./src/config/payment.config");
+const productsConfig = require("./src/config/products.config");
+const ProductService = require("./src/services/product/ProductService");
 
 // Initialize product service for legacy functions
 const productService = new ProductService();
@@ -44,8 +44,8 @@ const systemSettings = {
   // Payment accounts (flatten)
   paymentAccounts: {
     ...paymentConfig.ewallet,
-    ...paymentConfig.banks
-  }
+    ...paymentConfig.banks,
+  },
 };
 
 // Re-export products
@@ -63,7 +63,7 @@ function getProductById(productId) {
 }
 
 function formatProductList() {
-  return productService.formatProductList(systemSettings.usdToIdrRate);
+  return productService.formatProductList();
 }
 
 function isInStock(productId) {
@@ -78,12 +78,12 @@ function setStock(productId, quantity) {
       success: true,
       product: product,
       oldStock: quantity, // Cannot track old stock in new system
-      newStock: quantity
+      newStock: quantity,
     };
   }
   return {
     success: false,
-    message: `❌ Produk tidak ditemukan: ${productId}`
+    message: `❌ Produk tidak ditemukan: ${productId}`,
   };
 }
 
@@ -106,24 +106,45 @@ function removeProduct(productId) {
 // Update setting (modify in-memory only, doesn't persist)
 function updateSetting(key, value) {
   const validSettings = [
-    'usdToIdrRate', 'sessionTimeout', 'maxMessagesPerMinute',
-    'shopName', 'supportEmail', 'supportWhatsapp',
-    'autoDeliveryEnabled', 'maintenanceMode', 'maintenanceMessage',
-    'welcomeMessageEnabled', 'lowStockThreshold', 'logLevel'
+    "usdToIdrRate",
+    "sessionTimeout",
+    "maxMessagesPerMinute",
+    "shopName",
+    "supportEmail",
+    "supportWhatsapp",
+    "autoDeliveryEnabled",
+    "maintenanceMode",
+    "maintenanceMessage",
+    "welcomeMessageEnabled",
+    "lowStockThreshold",
+    "logLevel",
   ];
 
   if (!validSettings.includes(key)) {
     return {
       success: false,
-      message: `❌ Setting tidak valid: ${key}`
+      message: `❌ Setting tidak valid: ${key}`,
     };
   }
 
   // Type conversion
-  if (['usdToIdrRate', 'sessionTimeout', 'maxMessagesPerMinute', 'lowStockThreshold'].includes(key)) {
+  if (
+    [
+      "usdToIdrRate",
+      "sessionTimeout",
+      "maxMessagesPerMinute",
+      "lowStockThreshold",
+    ].includes(key)
+  ) {
     value = parseInt(value);
-  } else if (['autoDeliveryEnabled', 'maintenanceMode', 'welcomeMessageEnabled'].includes(key)) {
-    value = value === 'true' || value === true;
+  } else if (
+    [
+      "autoDeliveryEnabled",
+      "maintenanceMode",
+      "welcomeMessageEnabled",
+    ].includes(key)
+  ) {
+    value = value === "true" || value === true;
   }
 
   systemSettings[key] = value;
@@ -132,7 +153,7 @@ function updateSetting(key, value) {
     success: true,
     setting: key,
     oldValue: systemSettings[key],
-    newValue: value
+    newValue: value,
   };
 }
 
@@ -153,5 +174,5 @@ module.exports = {
   addProduct,
   editProduct,
   removeProduct,
-  updateSetting
+  updateSetting,
 };

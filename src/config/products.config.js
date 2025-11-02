@@ -12,7 +12,7 @@ const products = {
     {
       id: "netflix",
       name: "Netflix Premium Account (1 Month)",
-      price: 1,
+      price: 15800,
       description: "Full HD streaming, 4 screens",
       stock: DEFAULT_STOCK,
       category: "premium",
@@ -20,7 +20,7 @@ const products = {
     {
       id: "spotify",
       name: "Spotify Premium Account (1 Month)",
-      price: 1,
+      price: 15800,
       description: "Ad-free music, offline download",
       stock: DEFAULT_STOCK,
       category: "premium",
@@ -28,7 +28,7 @@ const products = {
     {
       id: "youtube",
       name: "YouTube Premium Account (1 Month)",
-      price: 1,
+      price: 15800,
       description: "Ad-free videos, background play",
       stock: DEFAULT_STOCK,
       category: "premium",
@@ -36,7 +36,7 @@ const products = {
     {
       id: "disney",
       name: "Disney+ Premium Account (1 Month)",
-      price: 1,
+      price: 15800,
       description: "HD streaming, all content",
       stock: DEFAULT_STOCK,
       category: "premium",
@@ -47,7 +47,7 @@ const products = {
     {
       id: "vcc-basic",
       name: "Virtual Credit Card - Basic",
-      price: 1,
+      price: 15800,
       description: "Pre-loaded $10 balance",
       stock: VCC_STOCK,
       category: "vcc",
@@ -55,7 +55,7 @@ const products = {
     {
       id: "vcc-standard",
       name: "Virtual Credit Card - Standard",
-      price: 1,
+      price: 15800,
       description: "Pre-loaded $25 balance",
       stock: VCC_STOCK,
       category: "vcc",

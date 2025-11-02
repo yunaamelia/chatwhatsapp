@@ -59,11 +59,10 @@ class ProductHandler extends BaseHandler {
 
   /**
    * List all products
-   * @param {number} usdToIdrRate
    * @returns {string}
    */
-  listProducts(usdToIdrRate = 15800) {
-    return this.productService.formatProductList(usdToIdrRate);
+  listProducts() {
+    return this.productService.formatProductList();
   }
 
   /**

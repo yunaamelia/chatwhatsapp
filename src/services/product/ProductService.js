@@ -163,16 +163,15 @@ class ProductService {
 
   /**
    * Format product list for display
-   * @param {string} usdToIdrRate
    * @returns {string} Formatted list
    */
-  formatProductList(usdToIdrRate) {
+  formatProductList() {
     let message = "*🛍️ Katalog Produk Premium*\n\n";
 
     // Premium Accounts
     message += "*📺 Premium Accounts*\n";
     productsCatalog.premiumAccounts.forEach((product, index) => {
-      const priceIDR = this.formatIDR(product.price * usdToIdrRate);
+      const priceIDR = this.formatIDR(product.price); // Price is already in IDR
       const stockStatus =
         product.stock > 0 ? `✅ (${product.stock})` : "❌ Stok Habis";
       message += `${index + 1}. ${product.name}\n`;
@@ -184,7 +183,7 @@ class ProductService {
     // Virtual Cards
     message += "*💳 Virtual Cards*\n";
     productsCatalog.virtualCards.forEach((product, index) => {
-      const priceIDR = this.formatIDR(product.price * usdToIdrRate);
+      const priceIDR = this.formatIDR(product.price); // Price is already in IDR
       const stockStatus =
         product.stock > 0 ? `✅ (${product.stock})` : "❌ Stok Habis";
       message += `${index + 1}. ${product.name}\n`;

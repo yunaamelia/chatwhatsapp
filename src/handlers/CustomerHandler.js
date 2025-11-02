@@ -197,8 +197,7 @@ class CustomerHandler extends BaseHandler {
     // Product found with good confidence
     if (product) {
       await this.sessionManager.addToCart(customerId, product);
-      const config = require("../config/app.config");
-      const priceIDR = product.price * config.currency.usdToIdrRate;
+      const priceIDR = product.price; // Price is already in IDR
 
       this.log(customerId, "product_added_to_cart", {
         productId: product.id,

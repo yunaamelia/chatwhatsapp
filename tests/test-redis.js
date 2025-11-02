@@ -3,7 +3,7 @@
  * Tests Redis connection, operations, and error handling
  */
 
-const redisClient = require("./lib/redisClient");
+const redisClient = require("../lib/redisClient");
 
 async function testRedis() {
   console.log("🧪 Testing Redis Client...\n");

@@ -10,7 +10,7 @@ const qrcode = require("qrcode-terminal");
 const SessionManager = require("./sessionManager");
 const ChatbotLogic = require("./chatbotLogic");
 const MessageRouter = require("./lib/messageRouter");
-const WebhookServer = require("./webhookServer");
+const WebhookServer = require("./services/webhookServer");
 const logRotationManager = require("./lib/logRotationManager");
 
 // Initialize components

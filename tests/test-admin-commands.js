@@ -10,8 +10,8 @@ const path = require("path");
 process.env.ADMIN_NUMBER_1 = "628123456789";
 process.env.LOG_RETENTION_DAYS = "7";
 
-const SessionManager = require("./sessionManager");
-const ChatbotLogic = require("./chatbotLogic");
+const SessionManager = require("../sessionManager");
+const ChatbotLogic = require("../chatbotLogic");
 
 // Test utilities
 function createMockOrderLog(filename, orders) {

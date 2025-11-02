@@ -3,9 +3,9 @@
  * This tests the chatbot functionality without requiring WhatsApp connection
  */
 
-const SessionManager = require("./sessionManager");
-const ChatbotLogic = require("./chatbotLogic");
-const { getAllProducts, getProductById } = require("./config");
+const SessionManager = require("../sessionManager");
+const ChatbotLogic = require("../chatbotLogic");
+const { getAllProducts, getProductById } = require("../config");
 
 async function runTests() {
   console.log("🧪 Starting Chatbot Logic Tests...\n");
@@ -100,7 +100,8 @@ async function runTests() {
       typeof response === "string" ? response : response.message;
     console.log(
       '  Contains "ORDER":',
-      checkoutMessage.includes("ORDER") || checkoutMessage.includes("KONFIRMASI")
+      checkoutMessage.includes("ORDER") ||
+        checkoutMessage.includes("KONFIRMASI")
     );
 
     cart = await sessionManager.getCart(testCustomerId);

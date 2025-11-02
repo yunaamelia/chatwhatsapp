@@ -8,7 +8,7 @@ const {
   getProductById,
   getAllProducts,
 } = require("./config");
-const XenditService = require("./xenditService");
+const XenditService = require("./services/xenditService");
 const UIMessages = require("./lib/uiMessages");
 const PaymentMessages = require("./lib/paymentMessages");
 const PaymentHandlers = require("./lib/paymentHandlers");
@@ -393,8 +393,9 @@ class ChatbotLogic {
     }
 
     const approveOrderId = parts[1];
-    const targetCustomerId =
-      await this.sessionManager.findCustomerByOrderId(approveOrderId);
+    const targetCustomerId = await this.sessionManager.findCustomerByOrderId(
+      approveOrderId
+    );
 
     if (!targetCustomerId) {
       return UIMessages.orderNotFound(approveOrderId);
@@ -869,14 +870,9 @@ class ChatbotLogic {
     await this.sessionManager.setStep(customerId, "awaiting_admin_approval");
 
     // Log payment proof upload
-    this.logger.logAdminAction(
-      customerId,
-      "payment_proof_uploaded",
-      orderId,
-      {
-        timestamp: new Date().toISOString(),
-      }
-    );
+    this.logger.logAdminAction(customerId, "payment_proof_uploaded", orderId, {
+      timestamp: new Date().toISOString(),
+    });
 
     return {
       message: `✅ *Bukti Pembayaran Diterima!*\n\nOrder ID: ${orderId}\n\nBukti pembayaran Anda telah diterima dan sedang diverifikasi oleh admin.\n\n⏱️ Waktu verifikasi: 5-15 menit\n\nAnda akan menerima notifikasi setelah pembayaran diverifikasi.`,

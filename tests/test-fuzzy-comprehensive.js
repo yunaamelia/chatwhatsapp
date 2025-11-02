@@ -3,8 +3,8 @@
  * Tests all edge cases and potential bugs
  */
 
-const SessionManager = require("./sessionManager");
-const ChatbotLogic = require("./chatbotLogic");
+const SessionManager = require("../sessionManager");
+const ChatbotLogic = require("../chatbotLogic");
 
 async function runComprehensiveTests() {
   console.log("🧪 Comprehensive Fuzzy Search Testing\n");

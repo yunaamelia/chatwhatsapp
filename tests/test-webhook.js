@@ -60,7 +60,7 @@ const mockWhatsappClient = {
 process.env.WEBHOOK_PORT = "3001";
 process.env.XENDIT_WEBHOOK_TOKEN = "test_webhook_token_12345";
 
-const WebhookServer = require("./webhookServer");
+const WebhookServer = require("../services/webhookServer");
 
 async function testWebhook() {
   console.log("🧪 Testing Webhook Server...\n");

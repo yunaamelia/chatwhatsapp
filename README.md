@@ -29,6 +29,29 @@ A professional WhatsApp chatbot designed to help you serve customers with the fa
 
 _You can easily customize products in `config.js`_
 
+## 📁 Project Structure
+
+```
+chatbot/
+├── index.js              # Main entry point
+├── chatbotLogic.js       # Business logic
+├── sessionManager.js     # Session management
+├── config.js             # Product catalog
+├── lib/                  # Core modules
+│   ├── messageRouter.js
+│   ├── paymentHandlers.js
+│   └── ...
+├── services/             # External services
+│   ├── xenditService.js
+│   ├── webhookServer.js
+│   └── ...
+├── tests/                # Test suites
+├── docs/                 # Documentation
+└── archive/              # Old files
+```
+
+See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for detailed structure.
+
 ## 🚀 Quick Start
 
 ### Prerequisites

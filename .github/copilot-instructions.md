@@ -13,12 +13,29 @@
 
 This is a WhatsApp chatbot built on `whatsapp-web.js` with a stateful session manager pattern. The architecture is intentionally simple - no database, minimal dependencies - optimized for low-resource VPS deployment (1 vCPU, 2GB RAM).
 
+**Project Structure:**
+
+```
+chatbot/
+├── index.js              # Entry point - WhatsApp client
+├── chatbotLogic.js       # Business logic & state machine
+├── sessionManager.js     # Session & cart management
+├── config.js             # Product catalog
+├── lib/                  # Core modules (8 files)
+├── services/             # External integrations (4 files)
+├── tests/                # Test suites (9 files)
+├── docs/                 # Documentation (14 files)
+└── archive/              # Old/backup files
+```
+
 **Core components:**
 
 - `index.js` - WhatsApp client initialization, message routing, error handling, graceful shutdown
 - `chatbotLogic.js` - Business logic implementing menu-driven conversation flow with step-based state machine
 - `sessionManager.js` - In-memory session storage using Map, tracks cart and conversation state per customer (phone number)
 - `config.js` - Product catalog with accessor functions; stock levels configurable via env vars
+- `lib/` - Modular components: messageRouter, paymentHandlers, uiMessages, inputValidator, transactionLogger, redisClient, logRotationManager
+- `services/` - External services: xenditService (payment), webhookServer (callbacks), productDelivery, qrisService
 
 **Key insight:** Each customer's journey is tracked via a "step" (menu/browsing/checkout) that determines how their next message is interpreted. The `SessionManager` provides isolation - concurrent customers never interfere.
 
@@ -34,7 +51,7 @@ npm start  # Displays QR code - scan with WhatsApp to link
 **Testing without WhatsApp:**
 
 ```bash
-npm test  # Runs test.js - validates logic without WhatsApp connection
+npm test  # Runs tests/test.js - validates logic without WhatsApp connection
 ```
 
 **VPS deployment:**

@@ -4,9 +4,9 @@
  */
 
 require("dotenv").config();
-const XenditService = require("./xenditService");
-const SessionManager = require("./sessionManager");
-const ChatbotLogic = require("./chatbotLogic");
+const XenditService = require("../services/xenditService");
+const SessionManager = require("../sessionManager");
+const ChatbotLogic = require("../chatbotLogic");
 
 // Test customer ID
 const testCustomerId = "6281234567890@c.us";

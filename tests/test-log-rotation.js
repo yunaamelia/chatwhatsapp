@@ -9,7 +9,7 @@ const path = require("path");
 // Mock environment variable
 process.env.LOG_RETENTION_DAYS = "7";
 
-const LogRotationManager = require("./lib/logRotationManager");
+const LogRotationManager = require("../lib/logRotationManager");
 
 // Test utilities
 function createMockLogFile(filename, ageInDays) {

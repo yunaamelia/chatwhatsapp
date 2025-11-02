@@ -9,8 +9,8 @@ const path = require("path");
 // Mock environment
 process.env.ADMIN_NUMBER_1 = "628123456789";
 
-const SessionManager = require("./sessionManager");
-const ChatbotLogic = require("./chatbotLogic");
+const SessionManager = require("../sessionManager");
+const ChatbotLogic = require("../chatbotLogic");
 
 // Test utilities
 function createMockOrderLog(customerId) {

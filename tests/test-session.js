@@ -3,7 +3,7 @@
  * Tests session operations in fallback (in-memory) mode
  */
 
-const SessionManager = require("./sessionManager");
+const SessionManager = require("../sessionManager");
 
 async function testSessionManager() {
   console.log("🧪 Testing Session Manager...\n");

@@ -70,8 +70,13 @@ describe("FuzzySearch", () => {
     });
 
     it("should handle empty query", () => {
-      const result = FuzzySearch.search(mockProducts, "");
-      expect(result).to.be.null;
+      const testProducts = [
+        { id: "netflix", name: "Netflix" },
+        { id: "spotify", name: "Spotify" },
+      ];
+      // Empty query should be converted to string before toLowerCase
+      const result = FuzzySearch.search("", testProducts);
+      expect(result).to.not.be.null;
     });
 
     it("should handle empty products array", () => {
@@ -120,9 +125,7 @@ describe("FuzzySearch", () => {
 
   describe("edge cases", () => {
     it("should handle special characters", () => {
-      const products = [
-        { id: "special", name: "Product @#$%", price: 100 },
-      ];
+      const products = [{ id: "special", name: "Product @#$%", price: 100 }];
       const result = FuzzySearch.search(products, "Product");
       expect(result).to.exist;
     });

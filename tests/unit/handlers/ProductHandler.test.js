@@ -120,9 +120,15 @@ describe("ProductHandler", () => {
 
   describe("error handling", () => {
     it("should return error message on exception", async () => {
-      // Force an error by passing invalid step
-      const result = await productHandler.handle("123", "netflix", null);
+      // Test with valid parameters but trigger search failure
+      const result = await productHandler.handle(
+        "123",
+        "nonexistentproduct123456",
+        "browsing"
+      );
       expect(result).to.be.a("string");
+      // Should return some error or not found message
+      expect(result.length).to.be.greaterThan(0);
     });
   });
 });

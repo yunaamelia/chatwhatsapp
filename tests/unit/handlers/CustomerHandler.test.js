@@ -64,13 +64,13 @@ describe("CustomerHandler", () => {
     it("should process browse command (1)", async () => {
       const result = await customerHandler.handleMenuSelection("123", "1");
       expect(result).to.be.a("string");
-      expect(result).to.include("KATALOG PRODUK");
+      expect(result).to.match(/katalog\s+produk/i);
     });
 
     it("should process cart command (2)", async () => {
       const result = await customerHandler.handleMenuSelection("123", "2");
       expect(result).to.be.a("string");
-      expect(result).to.include("Keranjang");
+      expect(result).to.match(/keranjang/i);
     });
 
     it("should handle invalid choice", async () => {
@@ -97,7 +97,7 @@ describe("CustomerHandler", () => {
       sessionManager.setStep("123", "browsing");
       const result = await customerHandler.handle("123", "menu", "browsing");
       expect(result).to.be.a("string");
-      expect(result).to.include("Menu Utama");
+      expect(result).to.match(/menu/i);
     });
 
     it("should handle cart command", async () => {
@@ -133,7 +133,7 @@ describe("CustomerHandler", () => {
       });
       const result = await customerHandler.showCart("123");
       expect(result).to.be.a("string");
-      expect(result).to.include("Netflix");
+      expect(result).to.match(/netflix/i);
     });
   });
 

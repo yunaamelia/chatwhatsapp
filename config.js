@@ -185,6 +185,174 @@ function getAllProductIds() {
   ];
 }
 
+/**
+ * Add new product to catalog (Admin only)
+ * @param {Object} productData - { id, name, price, description, stock, category }
+ * @returns {Object} Result with success status and message
+ */
+function addProduct(productData) {
+  const { id, name, price, description, stock, category } = productData;
+
+  // Validation
+  if (
+    !id ||
+    !name ||
+    !price ||
+    !description ||
+    stock === undefined ||
+    !category
+  ) {
+    return {
+      success: false,
+      message: "❌ Data produk tidak lengkap. Semua field wajib diisi.",
+    };
+  }
+
+  // Check if product ID already exists
+  if (getProductById(id)) {
+    return {
+      success: false,
+      message: `❌ Produk dengan ID "${id}" sudah ada.`,
+    };
+  }
+
+  // Validate price and stock
+  const priceNum = parseFloat(price);
+  const stockNum = parseInt(stock);
+
+  if (isNaN(priceNum) || priceNum <= 0) {
+    return {
+      success: false,
+      message: "❌ Harga tidak valid (harus angka > 0).",
+    };
+  }
+
+  if (isNaN(stockNum) || stockNum < 0) {
+    return {
+      success: false,
+      message: "❌ Stok tidak valid (harus angka >= 0).",
+    };
+  }
+
+  const newProduct = {
+    id: id.toLowerCase(),
+    name,
+    price: priceNum,
+    description,
+    stock: stockNum,
+  };
+
+  // Add to appropriate category
+  if (
+    category.toLowerCase() === "premium" ||
+    category.toLowerCase() === "premium account"
+  ) {
+    products.premiumAccounts.push(newProduct);
+  } else if (
+    category.toLowerCase() === "vcc" ||
+    category.toLowerCase() === "virtual card"
+  ) {
+    products.virtualCards.push(newProduct);
+  } else {
+    return {
+      success: false,
+      message: "❌ Kategori tidak valid. Gunakan: 'premium' atau 'vcc'.",
+    };
+  }
+
+  return {
+    success: true,
+    product: newProduct,
+    message: `✅ Produk "${name}" berhasil ditambahkan!`,
+  };
+}
+
+/**
+ * Remove product from catalog (Admin only)
+ * @param {string} productId - Product ID to remove
+ * @returns {Object} Result with success status and message
+ */
+function removeProduct(productId) {
+  const product = getProductById(productId);
+
+  if (!product) {
+    return {
+      success: false,
+      message: `❌ Produk dengan ID "${productId}" tidak ditemukan.`,
+    };
+  }
+
+  // Remove from premiumAccounts
+  const premiumIndex = products.premiumAccounts.findIndex(
+    (p) => p.id === productId
+  );
+  if (premiumIndex !== -1) {
+    products.premiumAccounts.splice(premiumIndex, 1);
+    return {
+      success: true,
+      product,
+      message: `✅ Produk "${product.name}" berhasil dihapus!`,
+    };
+  }
+
+  // Remove from virtualCards
+  const vccIndex = products.virtualCards.findIndex((p) => p.id === productId);
+  if (vccIndex !== -1) {
+    products.virtualCards.splice(vccIndex, 1);
+    return {
+      success: true,
+      product,
+      message: `✅ Produk "${product.name}" berhasil dihapus!`,
+    };
+  }
+
+  return {
+    success: false,
+    message: "❌ Gagal menghapus produk.",
+  };
+}
+
+/**
+ * Update product details (Admin only)
+ * @param {string} productId - Product ID to update
+ * @param {Object} updates - Fields to update (name, price, description)
+ * @returns {Object} Result with success status and message
+ */
+function updateProduct(productId, updates) {
+  const product = getProductById(productId);
+
+  if (!product) {
+    return {
+      success: false,
+      message: `❌ Produk dengan ID "${productId}" tidak ditemukan.`,
+    };
+  }
+
+  const oldData = { ...product };
+
+  // Update fields if provided
+  if (updates.name) product.name = updates.name;
+  if (updates.description) product.description = updates.description;
+
+  if (updates.price !== undefined) {
+    const priceNum = parseFloat(updates.price);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      return {
+        success: false,
+        message: "❌ Harga tidak valid (harus angka > 0).",
+      };
+    }
+    product.price = priceNum;
+  }
+
+  return {
+    success: true,
+    product,
+    oldData,
+    message: `✅ Produk "${product.name}" berhasil diupdate!`,
+  };
+}
+
 module.exports = {
   products,
   getAllProducts,
@@ -194,4 +362,7 @@ module.exports = {
   isInStock,
   setStock,
   getAllProductIds,
+  addProduct,
+  removeProduct,
+  updateProduct,
 };

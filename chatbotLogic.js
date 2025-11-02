@@ -82,6 +82,18 @@ class ChatbotLogic {
       return this.handleAdminStock(customerId, normalizedMessage);
     }
 
+    if (normalizedMessage.startsWith("/addproduct")) {
+      return this.handleAddProduct(customerId, sanitizedMessage);
+    }
+
+    if (normalizedMessage.startsWith("/removeproduct")) {
+      return this.handleRemoveProduct(customerId, normalizedMessage);
+    }
+
+    if (normalizedMessage.startsWith("/editproduct")) {
+      return this.handleEditProduct(customerId, sanitizedMessage);
+    }
+
     // Handle customer commands
     if (normalizedMessage === "history" || normalizedMessage === "/history") {
       return this.handleOrderHistory(customerId);
@@ -906,6 +918,424 @@ class ChatbotLogic {
     message += "/stock netflix 50";
 
     return message;
+  }
+
+  /**
+   * Admin Command: /addproduct
+   * Add new product to catalog
+   * Format: /addproduct <id> | <name> | <price> | <description> | <stock> | <category>
+   */
+  async handleAddProduct(adminId, fullMessage) {
+    if (!InputValidator.isAdmin(adminId)) {
+      this.logger.logSecurity(
+        adminId,
+        "unauthorized_admin_access",
+        "not_in_whitelist"
+      );
+      return UIMessages.unauthorized();
+    }
+
+    // Parse command: /addproduct <id> | <name> | <price> | <description> | <stock> | <category>
+    const commandText = fullMessage.substring("/addproduct ".length).trim();
+
+    if (!commandText) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Gunakan: /addproduct <id> | <name> | <price> | <description> | <stock> | <category>\n\n` +
+        `*Contoh:*\n` +
+        `/addproduct hbo | HBO Max Premium (1 Month) | 1 | Full HD streaming | 10 | premium\n\n` +
+        `*Kategori:*\n` +
+        `• premium - Akun premium\n` +
+        `• vcc - Virtual credit card`
+      );
+    }
+
+    const parts = commandText.split("|").map((p) => p.trim());
+
+    if (parts.length !== 6) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Harus ada 6 bagian dipisah dengan |\n\n` +
+        `Format: /addproduct <id> | <name> | <price> | <description> | <stock> | <category>\n\n` +
+        `*Contoh:*\n` +
+        `/addproduct hbo | HBO Max Premium (1 Month) | 1 | Full HD streaming | 10 | premium`
+      );
+    }
+
+    const [id, name, price, description, stock, category] = parts;
+    const { addProduct } = require("./config");
+    const result = addProduct({
+      id,
+      name,
+      price,
+      description,
+      stock,
+      category,
+    });
+
+    if (result.success) {
+      // Log admin action
+      this.logger.logAdminAction(adminId, "product_add", id, {
+        name,
+        price,
+        stock,
+        category,
+      });
+
+      const priceIDR = result.product.price * 15800;
+      return (
+        `✅ *Produk Berhasil Ditambahkan*\n\n` +
+        `🆔 *ID:* ${result.product.id}\n` +
+        `📦 *Nama:* ${result.product.name}\n` +
+        `💰 *Harga:* Rp ${priceIDR.toLocaleString("id-ID")}\n` +
+        `📝 *Deskripsi:* ${result.product.description}\n` +
+        `🔢 *Stok:* ${result.product.stock}\n` +
+        `⏰ *Ditambahkan:* ${new Date().toLocaleString("id-ID")}`
+      );
+    } else {
+      return result.message;
+    }
+  }
+
+  /**
+   * Admin Command: /removeproduct
+   * Remove product from catalog
+   * Format: /removeproduct <productId>
+   */
+  async handleRemoveProduct(adminId, fullMessage) {
+    if (!InputValidator.isAdmin(adminId)) {
+      this.logger.logSecurity(
+        adminId,
+        "unauthorized_admin_access",
+        "not_in_whitelist"
+      );
+      return UIMessages.unauthorized();
+    }
+
+    const parts = fullMessage.split(/\s+/);
+
+    if (parts.length !== 2) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Gunakan: /removeproduct <productId>\n\n` +
+        `*Contoh:*\n` +
+        `/removeproduct netflix\n` +
+        `/removeproduct hbo\n\n` +
+        `⚠️ *PERHATIAN:* Produk yang dihapus tidak bisa dikembalikan!`
+      );
+    }
+
+    const [, productId] = parts;
+    const { removeProduct } = require("./config");
+    const result = removeProduct(productId.toLowerCase());
+
+    if (result.success) {
+      // Log admin action
+      this.logger.logAdminAction(adminId, "product_remove", productId, {
+        name: result.product.name,
+      });
+
+      return (
+        `✅ *Produk Berhasil Dihapus*\n\n` +
+        `🗑️ *Produk:* ${result.product.name}\n` +
+        `🆔 *ID:* ${result.product.id}\n` +
+        `⏰ *Dihapus:* ${new Date().toLocaleString("id-ID")}`
+      );
+    } else {
+      return result.message;
+    }
+  }
+
+  /**
+   * Admin Command: /editproduct
+   * Edit product details
+   * Format: /editproduct <id> | <field> | <newValue>
+   */
+  async handleEditProduct(adminId, fullMessage) {
+    if (!InputValidator.isAdmin(adminId)) {
+      this.logger.logSecurity(
+        adminId,
+        "unauthorized_admin_access",
+        "not_in_whitelist"
+      );
+      return UIMessages.unauthorized();
+    }
+
+    const commandText = fullMessage.substring("/editproduct ".length).trim();
+
+    if (!commandText) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Gunakan: /editproduct <id> | <field> | <newValue>\n\n` +
+        `*Field yang bisa diedit:*\n` +
+        `• name - Nama produk\n` +
+        `• price - Harga (dalam USD)\n` +
+        `• description - Deskripsi\n\n` +
+        `*Contoh:*\n` +
+        `/editproduct netflix | name | Netflix Premium HD (1 Month)\n` +
+        `/editproduct spotify | price | 1.5\n` +
+        `/editproduct youtube | description | Ad-free, 4K quality`
+      );
+    }
+
+    const parts = commandText.split("|").map((p) => p.trim());
+
+    if (parts.length !== 3) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Harus ada 3 bagian dipisah dengan |\n\n` +
+        `Format: /editproduct <id> | <field> | <newValue>\n\n` +
+        `*Contoh:*\n` +
+        `/editproduct netflix | price | 1.5`
+      );
+    }
+
+    const [productId, field, newValue] = parts;
+    const validFields = ["name", "price", "description"];
+
+    if (!validFields.includes(field.toLowerCase())) {
+      return (
+        `❌ *Field Tidak Valid*\n\n` +
+        `Field yang bisa diedit:\n` +
+        `• name\n` +
+        `• price\n` +
+        `• description`
+      );
+    }
+
+    const { updateProduct } = require("./config");
+    const updates = {};
+    updates[field.toLowerCase()] = newValue;
+
+    const result = updateProduct(productId.toLowerCase(), updates);
+
+    if (result.success) {
+      // Log admin action
+      this.logger.logAdminAction(adminId, "product_edit", productId, {
+        field,
+        oldValue: result.oldData[field.toLowerCase()],
+        newValue,
+      });
+
+      return (
+        `✅ *Produk Berhasil Diupdate*\n\n` +
+        `📦 *Produk:* ${result.product.name}\n` +
+        `🔄 *Field:* ${field}\n` +
+        `📝 *Nilai Baru:* ${newValue}\n` +
+        `⏰ *Diupdate:* ${new Date().toLocaleString("id-ID")}`
+      );
+    } else {
+      return result.message;
+    }
+  }
+
+  /**
+   * Admin Command: /addproduct
+   * Add new product to catalog
+   * Format: /addproduct <id> | <name> | <price> | <description> | <stock> | <category>
+   */
+  async handleAddProduct(adminId, fullMessage) {
+    if (!InputValidator.isAdmin(adminId)) {
+      this.logger.logSecurity(
+        adminId,
+        "unauthorized_admin_access",
+        "not_in_whitelist"
+      );
+      return UIMessages.unauthorized();
+    }
+
+    // Parse command: /addproduct <id> | <name> | <price> | <description> | <stock> | <category>
+    const commandText = fullMessage.substring("/addproduct ".length).trim();
+
+    if (!commandText) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Gunakan: /addproduct <id> | <name> | <price> | <description> | <stock> | <category>\n\n` +
+        `*Contoh:*\n` +
+        `/addproduct hbo | HBO Max Premium (1 Month) | 1 | Full HD streaming | 10 | premium\n\n` +
+        `*Kategori:*\n` +
+        `• premium - Akun premium\n` +
+        `• vcc - Virtual credit card`
+      );
+    }
+
+    const parts = commandText.split("|").map((p) => p.trim());
+
+    if (parts.length !== 6) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Harus ada 6 bagian dipisah dengan |\n\n` +
+        `Format: /addproduct <id> | <name> | <price> | <description> | <stock> | <category>\n\n` +
+        `*Contoh:*\n` +
+        `/addproduct hbo | HBO Max Premium (1 Month) | 1 | Full HD streaming | 10 | premium`
+      );
+    }
+
+    const [id, name, price, description, stock, category] = parts;
+    const { addProduct } = require("./config");
+    const result = addProduct({
+      id,
+      name,
+      price,
+      description,
+      stock,
+      category,
+    });
+
+    if (result.success) {
+      // Log admin action
+      this.logger.logAdminAction(adminId, "product_add", id, {
+        name,
+        price,
+        stock,
+        category,
+      });
+
+      const priceIDR = result.product.price * 15800;
+      return (
+        `✅ *Produk Berhasil Ditambahkan*\n\n` +
+        `🆔 *ID:* ${result.product.id}\n` +
+        `📦 *Nama:* ${result.product.name}\n` +
+        `💰 *Harga:* Rp ${priceIDR.toLocaleString("id-ID")}\n` +
+        `📝 *Deskripsi:* ${result.product.description}\n` +
+        `🔢 *Stok:* ${result.product.stock}\n` +
+        `⏰ *Ditambahkan:* ${new Date().toLocaleString("id-ID")}`
+      );
+    } else {
+      return result.message;
+    }
+  }
+
+  /**
+   * Admin Command: /removeproduct
+   * Remove product from catalog
+   * Format: /removeproduct <productId>
+   */
+  async handleRemoveProduct(adminId, fullMessage) {
+    if (!InputValidator.isAdmin(adminId)) {
+      this.logger.logSecurity(
+        adminId,
+        "unauthorized_admin_access",
+        "not_in_whitelist"
+      );
+      return UIMessages.unauthorized();
+    }
+
+    const parts = fullMessage.split(/\s+/);
+
+    if (parts.length !== 2) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Gunakan: /removeproduct <productId>\n\n` +
+        `*Contoh:*\n` +
+        `/removeproduct netflix\n` +
+        `/removeproduct hbo\n\n` +
+        `⚠️ *PERHATIAN:* Produk yang dihapus tidak bisa dikembalikan!`
+      );
+    }
+
+    const [, productId] = parts;
+    const { removeProduct } = require("./config");
+    const result = removeProduct(productId.toLowerCase());
+
+    if (result.success) {
+      // Log admin action
+      this.logger.logAdminAction(adminId, "product_remove", productId, {
+        name: result.product.name,
+      });
+
+      return (
+        `✅ *Produk Berhasil Dihapus*\n\n` +
+        `🗑️ *Produk:* ${result.product.name}\n` +
+        `🆔 *ID:* ${result.product.id}\n` +
+        `⏰ *Dihapus:* ${new Date().toLocaleString("id-ID")}`
+      );
+    } else {
+      return result.message;
+    }
+  }
+
+  /**
+   * Admin Command: /editproduct
+   * Edit product details
+   * Format: /editproduct <id> | <field> | <newValue>
+   */
+  async handleEditProduct(adminId, fullMessage) {
+    if (!InputValidator.isAdmin(adminId)) {
+      this.logger.logSecurity(
+        adminId,
+        "unauthorized_admin_access",
+        "not_in_whitelist"
+      );
+      return UIMessages.unauthorized();
+    }
+
+    const commandText = fullMessage.substring("/editproduct ".length).trim();
+
+    if (!commandText) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Gunakan: /editproduct <id> | <field> | <newValue>\n\n` +
+        `*Field yang bisa diedit:*\n` +
+        `• name - Nama produk\n` +
+        `• price - Harga (dalam USD)\n` +
+        `• description - Deskripsi\n\n` +
+        `*Contoh:*\n` +
+        `/editproduct netflix | name | Netflix Premium HD (1 Month)\n` +
+        `/editproduct spotify | price | 1.5\n` +
+        `/editproduct youtube | description | Ad-free, 4K quality`
+      );
+    }
+
+    const parts = commandText.split("|").map((p) => p.trim());
+
+    if (parts.length !== 3) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Harus ada 3 bagian dipisah dengan |\n\n` +
+        `Format: /editproduct <id> | <field> | <newValue>\n\n` +
+        `*Contoh:*\n` +
+        `/editproduct netflix | price | 1.5`
+      );
+    }
+
+    const [productId, field, newValue] = parts;
+    const validFields = ["name", "price", "description"];
+
+    if (!validFields.includes(field.toLowerCase())) {
+      return (
+        `❌ *Field Tidak Valid*\n\n` +
+        `Field yang bisa diedit:\n` +
+        `• name\n` +
+        `• price\n` +
+        `• description`
+      );
+    }
+
+    const { updateProduct } = require("./config");
+    const updates = {};
+    updates[field.toLowerCase()] = newValue;
+
+    const result = updateProduct(productId.toLowerCase(), updates);
+
+    if (result.success) {
+      // Log admin action
+      this.logger.logAdminAction(adminId, "product_edit", productId, {
+        field,
+        oldValue: result.oldData[field.toLowerCase()],
+        newValue,
+      });
+
+      return (
+        `✅ *Produk Berhasil Diupdate*\n\n` +
+        `📦 *Produk:* ${result.product.name}\n` +
+        `🔄 *Field:* ${field}\n` +
+        `📝 *Nilai Baru:* ${newValue}\n` +
+        `⏰ *Diupdate:* ${new Date().toLocaleString("id-ID")}`
+      );
+    } else {
+      return result.message;
+    }
   }
 
   /**

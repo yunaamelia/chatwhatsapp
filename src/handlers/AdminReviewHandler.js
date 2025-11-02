@@ -17,8 +17,9 @@ class AdminReviewHandler extends BaseHandler {
    * /reviews - View all reviews or filter by product
    * /reviews <productId> - View reviews for specific product
    */
-  handleReviewStats(adminId, productFilter = null) {
+  handleReviewStats(adminId, _productFilter = null) {
     try {
+      // TODO: Implement product filtering
       const stats = this.reviewService.getStatistics();
 
       let response = "📊 *REVIEW STATISTICS*\n\n";

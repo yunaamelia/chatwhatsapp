@@ -62,6 +62,11 @@ class AdminHandler extends BaseHandler {
       return UIMessages.unauthorized();
     }
 
+    // Null/undefined check
+    if (!message || typeof message !== "string") {
+      return this.showAdminHelp();
+    }
+
     try {
       // Route to appropriate admin command handler
       if (message.startsWith("/approve ")) {

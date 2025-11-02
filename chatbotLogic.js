@@ -75,12 +75,12 @@ class ChatbotLogic {
     }
 
     if (normalizedMessage.startsWith("/status")) {
-      return await this.handleAdminStatus(customerId);
+      return this.handleAdminStatus(customerId);
     }
 
     // Handle customer commands
     if (normalizedMessage === "history" || normalizedMessage === "/history") {
-      return await this.handleOrderHistory(customerId);
+      return this.handleOrderHistory(customerId);
     }
 
     // Handle global commands
@@ -186,7 +186,7 @@ class ChatbotLogic {
     const queryLower = query.toLowerCase();
 
     // First try partial match (contains)
-    let match = products.find(
+    const match = products.find(
       (p) =>
         p.name.toLowerCase().includes(queryLower) ||
         p.id.toLowerCase().includes(queryLower)
@@ -568,7 +568,7 @@ class ChatbotLogic {
                   revenueMonth += revenue;
                 }
               }
-            } catch (e) {
+            } catch (_e) {
               errorCount++;
             }
           });
@@ -589,7 +589,7 @@ class ChatbotLogic {
             try {
               JSON.parse(line);
               errorCount++;
-            } catch (e) {
+            } catch (_e) {
               // Ignore parse errors
             }
           });
@@ -639,7 +639,7 @@ class ChatbotLogic {
    * Admin Command: /status
    * Shows system health status
    */
-  async handleAdminStatus(adminId) {
+  handleAdminStatus(adminId) {
     if (!InputValidator.isAdmin(adminId)) {
       this.logger.logSecurity(
         adminId,
@@ -709,7 +709,7 @@ class ChatbotLogic {
    * Customer Command: history
    * Shows customer's order history
    */
-  async handleOrderHistory(customerId) {
+  handleOrderHistory(customerId) {
     const fs = require("fs");
     const path = require("path");
     const logsDir = path.join(__dirname, "logs");
@@ -745,7 +745,7 @@ class ChatbotLogic {
                   status: "completed", // Default status
                 });
               }
-            } catch (e) {
+            } catch (_e) {
               // Skip invalid lines
             }
           });

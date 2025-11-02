@@ -228,3 +228,9 @@ npm run test:coverage   # With coverage report
 - `docs/MODULARIZATION.md` - Code structure
 - `docs/PAYMENT_SYSTEM.md` - Payment integration
 - `.github/memory/` - AI agent memory (this folder)
+### Phase 29: Redis Storage (Nov 3, 2025)
+- Redis-based inventory (FIFO with Lists)
+- RedisInventoryStorage.js - O(1) operations
+- Auto-fallback to file if Redis down
+- 7/7 tests passing
+- Commit: 1c9406e

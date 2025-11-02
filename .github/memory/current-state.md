@@ -57,18 +57,52 @@ CONTACT_WHATSAPP=6285800365445
 
 ## Recent Major Changes
 
-### Phase 24 (Nov 3, 2025)
+### Phase 28 (Nov 3, 2025) - Inventory Management via WhatsApp ✨
 
-- **Pricing System Migration**: USD-based → Direct IDR
-- All products: $1 → Rp 15,800
-- Removed USD conversion from UI layer
-- Commit: `8724660`
+**Status:** ✅ Production Ready (8/8 tests passing - 100%)
 
-### Phase 25 (Nov 3, 2025)
+**Problem Solved:** Admin harus SSH ke server untuk edit file credentials manual
 
-- **Environment Variables**: Complete .env integration
-- Fixed all hardcoded values (SHOP_NAME, BOT_NAME, rates)
-- Commits: `e65313c`, `4fe5f07`
+**Solution:** Input credentials langsung dari WhatsApp
+
+**New Features:**
+
+- `/addstock <id> <email:password>` - Add 1 credential (10 detik vs 5-10 menit SSH)
+- `/addstock-bulk <id>` - Add banyak credentials (multi-line input)
+- `/stockreport` - Real-time stock monitoring
+- `/salesreport [days]` - Sales analytics & pembukuan
+
+**Core Service:** `src/services/inventory/InventoryManager.js`
+
+- AsyncLocalStorage for transaction tracking
+- crypto.randomBytes for unique IDs
+- Input sanitization (anti path traversal)
+- Sales ledger (`products_data/sold/`)
+- Audit trail (`logs/inventory_transactions.log`)
+
+**Security:**
+
+- Admin-only access (whitelist validation)
+- Product ID sanitization: `../../../etc/passwd` → `etcpasswd`
+- Credential format validation (must have `:`, `|`, or `,`)
+- All operations logged with transaction IDs
+
+**Commits:**
+
+- `002a000` - feat: WhatsApp inventory management system
+- `9b823cf` - docs: add user guide (Indonesian)
+- `6b3785d` - docs: add release notes
+
+**Docs:**
+
+- `docs/INVENTORY_MANAGEMENT.md` - Technical (English)
+- `docs/CARA_INPUT_AKUN.md` - User guide (Indonesian)
+
+### Phase 27 (Nov 3, 2025)
+
+- **AI Memory System**: Created comprehensive memory directory
+- 7 files documenting decisions, bugs, patterns, and current state
+- Commits: `0551225`, `d792eb3`
 
 ### Phase 26 (Nov 3, 2025)
 
@@ -76,11 +110,18 @@ CONTACT_WHATSAPP=6285800365445
 - Fixed: 249M IDR bug → correct 31,600 IDR
 - Commit: `1a2c986`
 
-### Phase 27 (Nov 3, 2025)
+### Phase 25 (Nov 3, 2025)
 
-- **AI Memory System**: Created comprehensive memory directory
-- 7 files documenting decisions, bugs, patterns, and current state
-- Commits: `0551225`, `d792eb3`
+- **Environment Variables**: Complete .env integration
+- Fixed all hardcoded values (SHOP_NAME, BOT_NAME, rates)
+- Commits: `e65313c`, `4fe5f07`
+
+### Phase 24 (Nov 3, 2025)
+
+- **Pricing System Migration**: USD-based → Direct IDR
+- All products: $1 → Rp 15,800
+- Removed USD conversion from UI layer
+- Commit: `8724660`
 
 ## Bot Statistics
 
@@ -115,14 +156,34 @@ npm run test:coverage   # With coverage report
   pm2 status                 # Check status
   ```
 
-## Admin Commands (13 total)
+## Admin Commands (17 total)
 
-- `/stats` - System statistics
-- `/broadcast` - Message all customers
-- `/stock` - Manage product stock
+**Order Management:**
+
 - `/approve` - Approve orders
+- `/stats` - System statistics
+
+**Communication:**
+
+- `/broadcast` - Message all customers
+
+**Product Management:**
+
+- `/stock` - Manage product stock
+- `/addproduct`, `/editproduct`, `/removeproduct`
+
+**Inventory Management (NEW):**
+
+- `/addstock <id> <cred>` - Add single credential via WhatsApp
+- `/addstock-bulk <id>` - Add multiple credentials (multi-line)
+- `/stockreport` - View all product stock counts
+- `/salesreport [days]` - Sales analytics report
+
+**System:**
+
 - `/settings` - Bot configuration
-- And 8 more...
+- `/status` - System status
+- And 4 more...
 
 ## Next Steps
 

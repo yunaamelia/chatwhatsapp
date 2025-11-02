@@ -124,7 +124,7 @@ class AdminHandler extends BaseHandler {
         return await this.inventoryHandler.processBulkAdd(adminId, message);
       }
 
-      // Extract command from message (e.g., "/stats 30" -> "/stats")
+      // Parse command once to avoid redundant operations
       const command = message.split(/\s+/)[0];
       
       // Try exact match first

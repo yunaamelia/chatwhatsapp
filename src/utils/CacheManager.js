@@ -7,6 +7,7 @@ class CacheManager {
   constructor() {
     this.cache = new Map(); // key -> {value, expires}
     this.enabled = process.env.ENABLE_CACHE !== "false"; // Enabled by default
+    this.cleanupInterval = null;
     
     // Default TTL configurations (in seconds)
     this.defaultTTL = {

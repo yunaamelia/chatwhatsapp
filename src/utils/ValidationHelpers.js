@@ -49,7 +49,7 @@ class ValidationHelpers {
    * @returns {boolean}
    */
   static isPositiveInteger(value) {
-    const num = parseInt(value);
+    const num = Number(value);
     return !isNaN(num) && num > 0 && Number.isInteger(num);
   }
 

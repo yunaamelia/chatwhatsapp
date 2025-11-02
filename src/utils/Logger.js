@@ -58,7 +58,7 @@ class Logger {
   }
 
   /**
-   * Write to log file
+   * Write to log file (async, non-blocking)
    * @private
    */
   _writeToFile(level, message) {
@@ -67,7 +67,10 @@ class Logger {
     try {
       const date = new Date().toISOString().split("T")[0];
       const logFile = path.join(this.logDir, `app-${date}.log`);
-      fs.appendFileSync(logFile, message + "\n");
+      // Use async append to avoid blocking event loop
+      fs.promises.appendFile(logFile, message + "\n").catch((error) => {
+        console.error("Failed to write to log file:", error.message);
+      });
     } catch (error) {
       console.error("Failed to write to log file:", error.message);
     }

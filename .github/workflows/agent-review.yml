@@ -50,7 +50,7 @@ jobs:
         run: |
           echo "Checking file sizes (max 700 lines)..."
 
-          large_files=$(find src -name "*.js" -exec wc -l {} + | awk '$1 > 700 {print $0}')
+          large_files=$(find src -name "*.js" -exec wc -l {} \; | awk '$1 > 700 {print $0}')
 
           if [ ! -z "$large_files" ]; then
             echo "::error::Files exceeding 700 lines found:"

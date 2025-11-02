@@ -166,14 +166,20 @@ class CustomerHandler extends BaseHandler {
         this.log(
           customerId,
           "fuzzy_match",
-          `Fuzzy match: "${message}" -> "${product.name}" (score: ${fuzzyScore.toFixed(2)})`
+          `Fuzzy match: "${message}" -> "${
+            product.name
+          }" (score: ${fuzzyScore.toFixed(2)})`
         );
       }
     }
 
     // Check if AI should handle this (low confidence or question)
     if (this.aiHandler.shouldHandleMessage(message, fuzzyScore)) {
-      this.log(customerId, "ai_fallback", `AI fallback triggered for: "${message}"`);
+      this.log(
+        customerId,
+        "ai_fallback",
+        `AI fallback triggered for: "${message}"`
+      );
 
       const cart = await this.sessionManager.getCart(customerId);
       const aiResponse = await this.aiHandler.handleFallback({
@@ -191,7 +197,8 @@ class CustomerHandler extends BaseHandler {
     // Product found with good confidence
     if (product) {
       await this.sessionManager.addToCart(customerId, product);
-      const priceIDR = product.price * 15800;
+      const config = require("../config/app.config");
+      const priceIDR = product.price * config.currency.usdToIdrRate;
 
       this.log(customerId, "product_added_to_cart", {
         productId: product.id,

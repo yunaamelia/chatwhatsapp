@@ -30,6 +30,7 @@ module.exports = {
     botName: process.env.BOT_NAME || "Premium Shop Bot",
     supportEmail: process.env.CONTACT_EMAIL || "support@premiumshop.com",
     supportWhatsapp: process.env.CONTACT_WHATSAPP || "Nomor ini",
+    workingHours: process.env.WORKING_HOURS || "24/7",
   },
 
   // Feature flags

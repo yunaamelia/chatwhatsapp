@@ -32,3 +32,12 @@ temp/
 # Test coverage
 coverage/
 .nyc_output/
+
+# Payment & Delivery
+payment_proofs/
+payment_qris/
+delivery.log
+
+# Product Data (keep structure, ignore credentials)
+products_data/*.txt
+!products_data/README.md

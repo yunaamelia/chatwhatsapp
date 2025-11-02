@@ -14,6 +14,7 @@ const WishlistService = require("../services/wishlist/WishlistService");
 const PromoService = require("../services/promo/PromoService");
 const ReviewService = require("../services/review/ReviewService");
 const ProductService = require("../services/product/ProductService");
+const CustomerWishlistHandler = require("./CustomerWishlistHandler");
 
 class CustomerHandler extends BaseHandler {
   constructor(sessionManager, paymentHandlers, logger = null) {
@@ -25,6 +26,13 @@ class CustomerHandler extends BaseHandler {
     this.promoService = new PromoService();
     this.reviewService = new ReviewService();
     this.productService = new ProductService();
+
+    // Initialize wishlist handler
+    this.wishlistHandler = new CustomerWishlistHandler(
+      this.wishlistService,
+      this.productService,
+      logger
+    );
   }
 
   /**
@@ -64,7 +72,7 @@ class CustomerHandler extends BaseHandler {
 
       if (message === "wishlist" || message === "/wishlist") {
         console.log(`[CustomerHandler] -> Global command: wishlist`);
-        return await this.handleViewWishlist(customerId);
+        return await this.wishlistHandler.handleViewWishlist(customerId);
       }
 
       if (message.startsWith("/review ") || message.startsWith("review ")) {
@@ -604,135 +612,6 @@ class CustomerHandler extends BaseHandler {
       this.logError(customerId, error, { action: "order_id_for_proof" });
       await this.setStep(customerId, SessionSteps.MENU);
       return "❌ Gagal memproses bukti pembayaran. Silakan coba lagi atau hubungi admin.";
-    }
-  }
-
-  /**
-   * Handle add product to wishlist
-   * Triggered by "simpan <product>" or ⭐ emoji
-   * @param {string} customerId
-   * @param {string} message
-   * @returns {string} Response message
-   */
-  async handleAddToWishlist(customerId, message) {
-    console.log(
-      `[CustomerHandler] handleAddToWishlist() - Message: "${message}"`
-    );
-
-    try {
-      let productName = "";
-
-      // Parse command: "simpan netflix" or "⭐ netflix"
-      if (message.startsWith("simpan ")) {
-        productName = message.replace("simpan ", "").trim();
-      } else if (message.startsWith("⭐")) {
-        productName = message.replace("⭐", "").trim();
-      } else {
-        return "❌ Format salah. Gunakan: *simpan <nama produk>* atau *⭐ <nama produk>*\n\nContoh: simpan netflix";
-      }
-
-      if (!productName) {
-        return "❌ Nama produk tidak boleh kosong.\n\nContoh: simpan netflix";
-      }
-
-      // Find product using fuzzy search
-      const allProducts = getAllProducts();
-      const product = FuzzySearch.search(allProducts, productName, 3);
-
-      if (!product) {
-        return `❌ Produk "${productName}" tidak ditemukan.\n\nKetik *browse* untuk melihat daftar produk.`;
-      }
-
-      // Add to wishlist
-      const result = await this.wishlistService.addProduct(customerId, product);
-
-      return result.message;
-    } catch (error) {
-      this.logError(customerId, error, { action: "add_to_wishlist", message });
-      return "❌ Gagal menambahkan ke wishlist. Silakan coba lagi atau hubungi admin.";
-    }
-  }
-
-  /**
-   * Handle view wishlist
-   * @param {string} customerId
-   * @returns {string} Response message
-   */
-  async handleViewWishlist(customerId) {
-    console.log(`[CustomerHandler] handleViewWishlist()`);
-
-    try {
-      const wishlist = await this.wishlistService.getWishlist(customerId);
-
-      if (wishlist.length === 0) {
-        return (
-          "⭐ *Wishlist Anda*\n\n" +
-          "Wishlist Anda masih kosong.\n\n" +
-          "━━━━━━━━━━━━━━━━━━\n" +
-          "*Cara Menambahkan:*\n" +
-          "• Ketik: *simpan <nama produk>*\n" +
-          "• Atau: *⭐ <nama produk>*\n\n" +
-          "Contoh:\n" +
-          "• simpan netflix\n" +
-          "• ⭐ spotify\n\n" +
-          "━━━━━━━━━━━━━━━━━━\n" +
-          "💬 Ketik *browse* untuk melihat produk"
-        );
-      }
-
-      return UIMessages.wishlistView(wishlist);
-    } catch (error) {
-      this.logError(customerId, error, { action: "view_wishlist" });
-      return "❌ Gagal menampilkan wishlist. Silakan coba lagi atau hubungi admin.";
-    }
-  }
-
-  /**
-   * Handle remove from wishlist
-   * @param {string} customerId
-   * @param {string} productId
-   * @returns {string} Response message
-   */
-  async handleRemoveFromWishlist(customerId, productId) {
-    console.log(
-      `[CustomerHandler] handleRemoveFromWishlist() - Product ID: ${productId}`
-    );
-
-    try {
-      const result = await this.wishlistService.removeProduct(
-        customerId,
-        productId
-      );
-      return result.message;
-    } catch (error) {
-      this.logError(customerId, error, {
-        action: "remove_from_wishlist",
-        productId,
-      });
-      return "❌ Gagal menghapus dari wishlist. Silakan coba lagi atau hubungi admin.";
-    }
-  }
-
-  /**
-   * Handle move wishlist item to cart
-   * @param {string} customerId
-   * @param {string} productId
-   * @returns {string} Response message
-   */
-  async handleMoveToCart(customerId, productId) {
-    console.log(
-      `[CustomerHandler] handleMoveToCart() - Product ID: ${productId}`
-    );
-
-    try {
-      const result = await this.wishlistService.moveToCart(
-        customerId,
-        productId
-      );
-      return result.message;
-    } catch (error) {
-      this.logError(customerId, error, { action: "move_to_cart", productId });
-      return "❌ Gagal memindahkan ke keranjang. Silakan coba lagi atau hubungi admin.";
     }
   }
 

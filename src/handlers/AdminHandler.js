@@ -13,6 +13,8 @@ const AdminPromoHandler = require("./AdminPromoHandler");
 const PromoService = require("../services/promo/PromoService");
 const ReviewService = require("../services/review/ReviewService");
 const DashboardService = require("../services/analytics/DashboardService");
+const AdminReviewHandler = require("./AdminReviewHandler");
+const AdminAnalyticsHandler = require("./AdminAnalyticsHandler");
 
 class AdminHandler extends BaseHandler {
   constructor(sessionManager, xenditService, logger = null) {
@@ -29,6 +31,15 @@ class AdminHandler extends BaseHandler {
     );
     this.reviewService = new ReviewService();
     this.dashboardService = new DashboardService(logger);
+
+    // Initialize specialized handlers
+    this.reviewHandler = new AdminReviewHandler(this.reviewService, logger);
+    this.analyticsHandler = new AdminAnalyticsHandler(
+      this.dashboardService,
+      this.statsService,
+      sessionManager,
+      logger
+    );
   }
 
   /**
@@ -58,7 +69,7 @@ class AdminHandler extends BaseHandler {
       if (message.startsWith("/stats")) {
         const parts = message.split(/\s+/);
         const days = parts.length > 1 ? parseInt(parts[1]) || 30 : 30;
-        return await this.handleStats(adminId, days);
+        return await this.analyticsHandler.handleStats(adminId, days);
       }
 
       if (message.startsWith("/status")) {
@@ -122,15 +133,15 @@ class AdminHandler extends BaseHandler {
       }
 
       if (message.startsWith("/reviews ")) {
-        return this.handleViewReviews(adminId, message);
+        return this.reviewHandler.handleViewReviews(adminId, message);
       }
 
       if (message === "/reviewstats") {
-        return this.handleReviewStats(adminId);
+        return this.reviewHandler.handleReviewStats(adminId);
       }
 
       if (message.startsWith("/deletereview ")) {
-        return this.handleDeleteReview(adminId, message);
+        return this.reviewHandler.handleDeleteReview(adminId, message);
       }
 
       // Check if admin is in bulk add mode
@@ -280,86 +291,10 @@ class AdminHandler extends BaseHandler {
   }
 
   /**
-   * /stats - Show statistics (orders, revenue, active sessions)
+   * handleStats - Wrapper for backward compatibility (delegates to analyticsHandler)
    */
   async handleStats(adminId, days = 30) {
-    try {
-      // Get basic stats (existing)
-      const basicStats = await this.statsService.getStats(this.sessionManager);
-
-      // Get enhanced dashboard data
-      const dashboard = this.dashboardService.getDashboardData(days);
-
-      // Build enhanced stats message
-      let response = "📊 *ADMIN DASHBOARD*\n\n";
-
-      // === SALES OVERVIEW ===
-      response += "💰 *Sales Overview* (Last " + days + " Days)\n";
-      response += "━━━━━━━━━━━━━━━━━━\n";
-      response += `📦 Total Orders: ${dashboard.sales.totalOrders}\n`;
-      response += `✅ Completed: ${dashboard.sales.completedOrders}\n`;
-      response += `⏳ Pending: ${dashboard.sales.pendingOrders}\n`;
-      response += `💵 Total Revenue: ${this._formatIDR(
-        dashboard.sales.totalRevenue
-      )}\n`;
-      response += `📈 Avg Order: ${this._formatIDR(
-        dashboard.sales.avgOrderValue
-      )}\n`;
-      response += `✔️ Completion Rate: ${dashboard.sales.completionRate}%\n\n`;
-
-      // === REVENUE BY PAYMENT METHOD ===
-      if (dashboard.revenue.total > 0) {
-        response += "💳 *Revenue by Payment Method*\n";
-        response += "━━━━━━━━━━━━━━━━━━\n";
-        response += this.dashboardService.generateBarChart(
-          dashboard.revenue,
-          15
-        );
-        response += "\n";
-        response += `📊 Total: ${this._formatIDR(dashboard.revenue.total)}\n\n`;
-      }
-
-      // === TOP 5 PRODUCTS ===
-      if (dashboard.topProducts.length > 0) {
-        response += "🏆 *Top 5 Best-Selling Products*\n";
-        response += "━━━━━━━━━━━━━━━━━━\n";
-        dashboard.topProducts.forEach((product, index) => {
-          response += `${index + 1}. ${product.productName}\n`;
-          response += `   • Sold: ${product.unitsSold} units\n`;
-          response += `   • Revenue: ${this._formatIDR(product.revenue)}\n`;
-          if (index < dashboard.topProducts.length - 1) response += "\n";
-        });
-        response += "\n\n";
-      }
-
-      // === CUSTOMER RETENTION ===
-      response += "👥 *Customer Retention*\n";
-      response += "━━━━━━━━━━━━━━━━━━\n";
-      response += `📊 Total Customers: ${dashboard.retention.totalCustomers}\n`;
-      response += `🆕 First-time: ${dashboard.retention.firstTimeCustomers}\n`;
-      response += `🔁 Repeat: ${dashboard.retention.repeatCustomers}\n`;
-      response += `📈 Retention Rate: ${dashboard.retention.retentionRate}%\n`;
-      response += `📊 Avg Orders/Customer: ${dashboard.retention.avgOrdersPerCustomer}\n\n`;
-
-      // === QUICK STATS (from existing) ===
-      response += "⚡ *Quick Stats*\n";
-      response += "━━━━━━━━━━━━━━━━━━\n";
-      response += `👥 Active Sessions: ${basicStats.activeSessions}\n`;
-      response += `🛒 Active Carts: ${basicStats.activeCarts}\n`;
-      response += `⏰ Pending Payments: ${basicStats.pendingPayments}\n\n`;
-
-      response += "━━━━━━━━━━━━━━━━━━\n";
-      response += `📅 Period: Last ${days} days\n`;
-      response += `⏱️ Generated: ${new Date().toLocaleString("id-ID")}\n\n`;
-      response += "💡 Use */stats 7* for last 7 days\n";
-      response += "💡 Use */stats 90* for last 90 days";
-
-      this.log(adminId, "stats_viewed", { days });
-      return response;
-    } catch (error) {
-      this.logError(adminId, error, { action: "stats" });
-      return `❌ *Error Generating Stats*\n\n${error.message}`;
-    }
+    return await this.analyticsHandler.handleStats(adminId, days);
   }
 
   /**
@@ -764,154 +699,6 @@ class AdminHandler extends BaseHandler {
   // Promo code methods moved to AdminPromoHandler
 
   /**
-   * /reviews <product> - View all reviews for a product
-   * Example: /reviews netflix
-   */
-  handleViewReviews(adminId, message) {
-    try {
-      const productId = message.replace("/reviews ", "").trim().toLowerCase();
-
-      if (!productId) {
-        return (
-          "❌ *Format salah!*\n\n" +
-          "*Format:* `/reviews <productId>`\n\n" +
-          "*Contoh:*\n" +
-          "• /reviews netflix\n" +
-          "• /reviews spotify"
-        );
-      }
-
-      const reviews = this.reviewService.getProductReviews(productId, false);
-
-      if (reviews.length === 0) {
-        return `📝 *Reviews untuk ${productId}*\n\nBelum ada review untuk produk ini.`;
-      }
-
-      const avgRating = this.reviewService.getAverageRating(productId);
-      const distribution = this.reviewService.getRatingDistribution(productId);
-
-      let response = `📝 *Reviews untuk ${productId}*\n\n`;
-      response += `⭐ *Rating:* ${avgRating.average}/5.0 (${avgRating.count} reviews)\n\n`;
-      response += `📊 *Distribusi Rating:*\n`;
-      response += `5⭐: ${distribution[5] || 0} | 4⭐: ${
-        distribution[4] || 0
-      } | 3⭐: ${distribution[3] || 0} | 2⭐: ${distribution[2] || 0} | 1⭐: ${
-        distribution[1] || 0
-      }\n\n`;
-      response += `━━━━━━━━━━━━━━━━━━\n\n`;
-
-      // Show last 10 reviews
-      const recentReviews = reviews.slice(-10).reverse();
-      recentReviews.forEach((review, index) => {
-        response += this.reviewService.formatReview(review, true);
-        if (index < recentReviews.length - 1) {
-          response += "\n---\n\n";
-        }
-      });
-
-      if (reviews.length > 10) {
-        response += `\n\n📌 Showing ${recentReviews.length} of ${reviews.length} reviews`;
-      }
-
-      this.log(adminId, "view_reviews", { productId, count: reviews.length });
-
-      return response;
-    } catch (error) {
-      this.logError(adminId, error, { action: "view_reviews", message });
-      return "❌ Gagal menampilkan reviews. Silakan coba lagi.";
-    }
-  }
-
-  /**
-   * /reviewstats - Overall review statistics
-   */
-  handleReviewStats(adminId) {
-    try {
-      const stats = this.reviewService.getStatistics();
-
-      let response = "📊 *REVIEW STATISTICS*\n\n";
-      response += `📝 Total Reviews: ${stats.totalReviews}\n`;
-      response += `⭐ Average Rating: ${stats.averageRating}/5.0\n`;
-      response += `✅ Active Reviews: ${stats.activeReviews}\n`;
-      response += `❌ Deleted Reviews: ${stats.deletedReviews}\n\n`;
-      response += `📈 *Rating Distribution:*\n`;
-      response += `5⭐: ${stats.ratingDistribution[5] || 0} reviews\n`;
-      response += `4⭐: ${stats.ratingDistribution[4] || 0} reviews\n`;
-      response += `3⭐: ${stats.ratingDistribution[3] || 0} reviews\n`;
-      response += `2⭐: ${stats.ratingDistribution[2] || 0} reviews\n`;
-      response += `1⭐: ${stats.ratingDistribution[1] || 0} reviews\n\n`;
-
-      if (stats.topRatedProducts && stats.topRatedProducts.length > 0) {
-        response += `🏆 *Top Rated Products:*\n`;
-        stats.topRatedProducts.forEach((product, index) => {
-          response += `${index + 1}. ${product.productId}: ⭐ ${
-            product.averageRating
-          }/5.0 (${product.reviewCount} reviews)\n`;
-        });
-      }
-
-      this.log(adminId, "view_review_stats", {
-        totalReviews: stats.totalReviews,
-      });
-
-      return response;
-    } catch (error) {
-      this.logError(adminId, error, { action: "review_stats" });
-      return "❌ Gagal menampilkan review statistics. Silakan coba lagi.";
-    }
-  }
-
-  /**
-   * /deletereview <reviewId> - Delete/moderate a review
-   * Example: /deletereview REV-1234567890-abc
-   */
-  handleDeleteReview(adminId, message) {
-    try {
-      const reviewId = message.replace("/deletereview ", "").trim();
-
-      if (!reviewId || !reviewId.startsWith("REV-")) {
-        return (
-          "❌ *Format salah!*\n\n" +
-          "*Format:* `/deletereview <reviewId>`\n\n" +
-          "*Contoh:*\n" +
-          "• /deletereview REV-1234567890-abc\n\n" +
-          "Review ID dapat dilihat dengan `/reviews <product>`"
-        );
-      }
-
-      const review = this.reviewService.getReview(reviewId);
-      if (!review) {
-        return `❌ Review dengan ID "${reviewId}" tidak ditemukan.`;
-      }
-
-      // Soft delete (set isActive = false)
-      const result = this.reviewService.deleteReview(reviewId);
-
-      if (!result.success) {
-        return result.message;
-      }
-
-      let response = "✅ *Review berhasil dihapus*\n\n";
-      response += `📝 Review ID: ${reviewId}\n`;
-      response += `📦 Product: ${review.productId}\n`;
-      response += `⭐ Rating: ${review.rating}/5\n`;
-      response += `💬 Text: "${review.reviewText}"\n\n`;
-      response += `⚠️ Review di-soft delete (masih bisa dipulihkan)`;
-
-      this.log(adminId, "delete_review", {
-        reviewId,
-        productId: review.productId,
-        rating: review.rating,
-      });
-
-      return response;
-    } catch (error) {
-      this.logError(adminId, error, { action: "delete_review", message });
-      return "❌ Gagal menghapus review. Silakan coba lagi.";
-    }
-  }
-
-  /**
    * Show admin help menu
    */
   showAdminHelp() {
@@ -947,18 +734,6 @@ class AdminHandler extends BaseHandler {
     message += "• /generate-desc <productId> - Generate product description";
 
     return message;
-  }
-
-  /**
-   * Format IDR currency
-   * @private
-   */
-  _formatIDR(amount) {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount);
   }
 }
 

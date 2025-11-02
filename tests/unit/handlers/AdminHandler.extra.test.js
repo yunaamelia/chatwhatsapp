@@ -22,10 +22,38 @@ class MockSessionManager {
         step: "menu",
         cart: [],
         orders: [],
+        orderId: null,
         lastActivity: Date.now(),
       });
     }
     return this.sessions.get(customerId);
+  }
+
+  getAllCustomerIds() {
+    return Array.from(this.sessions.keys());
+  }
+
+  findCustomerByOrderId(orderId) {
+    for (const [customerId, session] of this.sessions.entries()) {
+      if (session.orderId === orderId) {
+        return customerId;
+      }
+    }
+    return null;
+  }
+
+  setOrderId(customerId, orderId) {
+    const session = this.getSession(customerId);
+    session.orderId = orderId;
+  }
+
+  getStep(customerId) {
+    return this.getSession(customerId).step;
+  }
+
+  setStep(customerId, step) {
+    const session = this.getSession(customerId);
+    session.step = step;
   }
 }
 
@@ -68,8 +96,10 @@ describe("AdminHandler - Additional Coverage Tests", () => {
     it("should handle broadcast with message", async () => {
       const message = "/broadcast Important announcement";
       const result = await adminHandler.handle(adminId, message, "menu");
-      expect(result).to.be.a("string");
-      expect(result.length).to.be.greaterThan(0);
+      // handleBroadcast returns an object with message and broadcast info
+      expect(result).to.be.an("object");
+      expect(result).to.have.property("message");
+      expect(result).to.have.property("broadcast", true);
     });
 
     it("should handle broadcast with empty message", async () => {
@@ -80,14 +110,16 @@ describe("AdminHandler - Additional Coverage Tests", () => {
     it("should handle broadcast with special characters", async () => {
       const message = "/broadcast Test @#$%^&*()";
       const result = await adminHandler.handle(adminId, message, "menu");
-      expect(result).to.be.a("string");
+      expect(result).to.be.an("object");
+      expect(result).to.have.property("broadcast", true);
     });
 
     it("should handle broadcast with very long message", async () => {
       const longText = "a".repeat(5000);
       const message = `/broadcast ${longText}`;
       const result = await adminHandler.handle(adminId, message, "menu");
-      expect(result).to.be.a("string");
+      expect(result).to.be.an("object");
+      expect(result).to.have.property("broadcast", true);
     });
   });
 

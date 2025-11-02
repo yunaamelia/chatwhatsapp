@@ -29,6 +29,10 @@ class MockSessionManager {
     session.step = step;
   }
 
+  getStep(customerId) {
+    return this.getSession(customerId).step;
+  }
+
   getCart(customerId) {
     return this.getSession(customerId).cart;
   }

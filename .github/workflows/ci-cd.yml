@@ -27,7 +27,7 @@ jobs:
         run: npm run lint || true
 
       - name: Run unit tests
-        run: npm test || true
+        run: npm test
 
       - name: Run integration tests
         run: npm run test:integration || true

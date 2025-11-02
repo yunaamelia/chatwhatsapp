@@ -74,9 +74,10 @@ describe("FuzzySearch", () => {
         { id: "netflix", name: "Netflix" },
         { id: "spotify", name: "Spotify" },
       ];
-      // Empty query should be converted to string before toLowerCase
-      const result = FuzzySearch.search("", testProducts);
+      // Empty query returns a match (fuzzy search behavior)
+      const result = FuzzySearch.search(testProducts, "");
       expect(result).to.not.be.null;
+      expect(result).to.have.property("id");
     });
 
     it("should handle empty products array", () => {

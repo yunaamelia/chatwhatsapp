@@ -138,6 +138,53 @@ function isInStock(productId) {
   return product && product.stock > 0;
 }
 
+/**
+ * Set stock for a product (Admin only)
+ * @param {string} productId - Product ID
+ * @param {number} quantity - New stock quantity
+ * @returns {Object} Result with success status and message
+ */
+function setStock(productId, quantity) {
+  const product = getProductById(productId);
+
+  if (!product) {
+    return {
+      success: false,
+      message: `❌ Produk tidak ditemukan: ${productId}`,
+    };
+  }
+
+  const qty = parseInt(quantity);
+  if (isNaN(qty) || qty < 0) {
+    return {
+      success: false,
+      message: `❌ Jumlah tidak valid: ${quantity}`,
+    };
+  }
+
+  const oldStock = product.stock;
+  product.stock = qty;
+
+  return {
+    success: true,
+    product: product,
+    oldStock: oldStock,
+    newStock: qty,
+    message: `✅ Stok ${product.name} diupdate: ${oldStock} → ${qty}`,
+  };
+}
+
+/**
+ * Get all product IDs (for validation)
+ * @returns {Array} List of all product IDs
+ */
+function getAllProductIds() {
+  return [
+    ...products.premiumAccounts.map((p) => p.id),
+    ...products.virtualCards.map((p) => p.id),
+  ];
+}
+
 module.exports = {
   products,
   getAllProducts,
@@ -145,4 +192,6 @@ module.exports = {
   formatProductList,
   decrementStock,
   isInStock,
+  setStock,
+  getAllProductIds,
 };

@@ -78,6 +78,10 @@ class ChatbotLogic {
       return this.handleAdminStatus(customerId);
     }
 
+    if (normalizedMessage.startsWith("/stock")) {
+      return this.handleAdminStock(customerId, normalizedMessage);
+    }
+
     // Handle customer commands
     if (normalizedMessage === "history" || normalizedMessage === "/history") {
       return this.handleOrderHistory(customerId);
@@ -802,6 +806,106 @@ class ChatbotLogic {
       console.error("❌ Error fetching order history:", error);
       return `❌ *Error Mengambil Riwayat*\n\n${error.message}`;
     }
+  }
+
+  /**
+   * Admin Command: /stock <productId> <quantity>
+   * Update product stock quantity
+   */
+  handleAdminStock(adminId, fullMessage) {
+    if (!InputValidator.isAdmin(adminId)) {
+      this.logger.logSecurity(
+        adminId,
+        "unauthorized_admin_access",
+        "not_in_whitelist"
+      );
+      return UIMessages.unauthorized();
+    }
+
+    // Parse command: /stock <productId> <quantity>
+    const parts = fullMessage.split(/\s+/);
+
+    if (parts.length === 1) {
+      // Show current stock if no parameters
+      return this.showAllStock();
+    }
+
+    if (parts.length !== 3) {
+      return (
+        `❌ *Format Salah*\n\n` +
+        `Gunakan: /stock <productId> <jumlah>\n\n` +
+        `*Contoh:*\n` +
+        `/stock netflix 50\n` +
+        `/stock spotify 30\n\n` +
+        `*Atau ketik /stock untuk melihat semua stok*\n\n` +
+        `*Product IDs:*\n` +
+        `• netflix\n` +
+        `• spotify\n` +
+        `• youtube\n` +
+        `• disney\n` +
+        `• vcc-basic\n` +
+        `• vcc-standard`
+      );
+    }
+
+    const [, productId, quantity] = parts;
+    const { setStock } = require("./config");
+    const result = setStock(productId.toLowerCase(), quantity);
+
+    if (result.success) {
+      // Log admin action
+      this.logger.logAdminAction(adminId, "stock_update", productId, {
+        oldStock: result.oldStock,
+        newStock: result.newStock,
+      });
+
+      return (
+        `✅ *Stok Berhasil Diupdate*\n\n` +
+        `📦 *Produk:* ${result.product.name}\n` +
+        `🔢 *Stok Lama:* ${result.oldStock}\n` +
+        `🔢 *Stok Baru:* ${result.newStock}\n` +
+        `⏰ *Diupdate:* ${new Date().toLocaleString("id-ID")}`
+      );
+    } else {
+      return result.message;
+    }
+  }
+
+  /**
+   * Show all product stock levels
+   */
+  showAllStock() {
+    const { getAllProducts } = require("./config");
+    const products = getAllProducts();
+
+    let message = "📊 *STOCK INVENTORY*\n\n";
+
+    message += "📺 *Akun Premium:*\n";
+    products
+      .filter((p) => p.category === "Premium Account")
+      .forEach((p, idx) => {
+        const status = p.stock > 10 ? "✅" : p.stock > 0 ? "⚠️" : "❌";
+        message += `${idx + 1}. ${p.name}\n`;
+        message += `   ID: ${p.id}\n`;
+        message += `   ${status} Stok: ${p.stock}\n\n`;
+      });
+
+    message += "💳 *Kartu Kredit Virtual:*\n";
+    products
+      .filter((p) => p.category === "Virtual Card")
+      .forEach((p, idx) => {
+        const status = p.stock > 10 ? "✅" : p.stock > 0 ? "⚠️" : "❌";
+        message += `${idx + 1}. ${p.name}\n`;
+        message += `   ID: ${p.id}\n`;
+        message += `   ${status} Stok: ${p.stock}\n\n`;
+      });
+
+    message += "\n*Update Stok:*\n";
+    message += "/stock <productId> <jumlah>\n\n";
+    message += "*Contoh:*\n";
+    message += "/stock netflix 50";
+
+    return message;
   }
 
   /**

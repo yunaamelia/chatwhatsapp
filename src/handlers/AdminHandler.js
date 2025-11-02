@@ -15,6 +15,7 @@ const ReviewService = require("../services/review/ReviewService");
 const DashboardService = require("../services/analytics/DashboardService");
 const AdminReviewHandler = require("./AdminReviewHandler");
 const AdminAnalyticsHandler = require("./AdminAnalyticsHandler");
+const AdminOrderHandler = require("./AdminOrderHandler");
 
 class AdminHandler extends BaseHandler {
   constructor(sessionManager, xenditService, logger = null) {
@@ -40,6 +41,11 @@ class AdminHandler extends BaseHandler {
       sessionManager,
       logger
     );
+    this.orderHandler = new AdminOrderHandler(
+      sessionManager,
+      this.xenditService,
+      logger
+    );
   }
 
   /**
@@ -59,11 +65,11 @@ class AdminHandler extends BaseHandler {
     try {
       // Route to appropriate admin command handler
       if (message.startsWith("/approve ")) {
-        return await this.handleApprove(adminId, message);
+        return await this.orderHandler.handleApprove(adminId, message);
       }
 
       if (message.startsWith("/broadcast ")) {
-        return await this.handleBroadcast(adminId, message);
+        return await this.orderHandler.handleBroadcast(adminId, message);
       }
 
       if (message.startsWith("/stats")) {
@@ -156,138 +162,6 @@ class AdminHandler extends BaseHandler {
       this.logError(adminId, error, { command: message });
       return `❌ Terjadi kesalahan saat menjalankan command admin.\n\n${error.message}`;
     }
-  }
-
-  /**
-   * /approve <orderId> - Approve manual payment
-   */
-  async handleApprove(adminId, message) {
-    const parts = message.split(" ");
-    if (parts.length < 2) {
-      return UIMessages.adminApprovalFormat();
-    }
-
-    const orderId = parts[1];
-    const customerId = await this.sessionManager.findCustomerByOrderId(orderId);
-
-    if (!customerId) {
-      return UIMessages.orderNotFound(orderId);
-    }
-
-    const step = await this.getStep(customerId);
-    if (step !== "awaiting_admin_approval") {
-      return UIMessages.orderNotPending(orderId);
-    }
-
-    // Double-check payment status via Xendit
-    const paymentData = await this.sessionManager.getPaymentMethod(customerId);
-    if (paymentData.invoiceId) {
-      try {
-        const paymentStatus = await this.xenditService.checkPaymentStatus(
-          paymentData.invoiceId
-        );
-
-        if (paymentStatus.status !== "SUCCEEDED") {
-          this.log(adminId, "payment_not_verified", {
-            orderId,
-            invoiceId: paymentData.invoiceId,
-            status: paymentStatus.status,
-          });
-          return `❌ *Payment Belum Berhasil*\n\nOrder: ${orderId}\nStatus: ${paymentStatus.status}\n\nTidak bisa approve sebelum payment SUCCEEDED.`;
-        }
-
-        console.log(
-          `✅ Payment verified for ${orderId}: ${paymentStatus.status}`
-        );
-      } catch (error) {
-        this.logError(adminId, error, {
-          orderId,
-          action: "payment_double_check",
-        });
-        return `⚠️ *Gagal Verifikasi Payment*\n\nError: ${error.message}\n\nSilakan cek manual di dashboard Xendit.`;
-      }
-    }
-
-    // Deliver products
-    const cart = await this.sessionManager.getCart(customerId);
-    const ProductDelivery = require("../../services/productDelivery");
-    const productDelivery = new ProductDelivery();
-    const deliveryResult = productDelivery.deliverProducts(
-      customerId,
-      orderId,
-      cart
-    );
-
-    if (!deliveryResult.success) {
-      this.logError(customerId, new Error("Delivery failed"), {
-        orderId,
-        reason: "no_products_available",
-      });
-      return UIMessages.deliveryFailed(orderId);
-    }
-
-    const customerMessage = productDelivery.formatDeliveryMessage(
-      deliveryResult,
-      orderId
-    );
-
-    // Calculate totals
-    const { IDR_RATE } = require("../../config");
-    const totalUSD = cart.reduce((sum, item) => sum + item.price, 0);
-    const totalIDR = totalUSD * IDR_RATE;
-
-    // Log admin approval with complete order data
-    this.log(adminId, "approve_order", {
-      orderId,
-      customerId,
-      items: cart.map((p) => ({ id: p.id, name: p.name, price: p.price })),
-      totalUSD,
-      totalIDR,
-      products: cart.map((p) => p.name), // Keep for backward compatibility
-    });
-
-    // Decrement stock
-    const { decrementStock } = require("../../config");
-    cart.forEach((item) => {
-      decrementStock(item.id);
-      console.log(`📦 Stock decremented for ${item.id}`);
-    });
-
-    // Clear cart and reset step
-    await this.sessionManager.clearCart(customerId);
-    await this.setStep(customerId, "menu");
-
-    return {
-      message: UIMessages.approvalSuccess(orderId),
-      deliverToCustomer: true,
-      customerId: customerId,
-      customerMessage: customerMessage,
-    };
-  }
-
-  /**
-   * /broadcast <message> - Send message to all active customers
-   */
-  async handleBroadcast(adminId, message) {
-    const broadcastMessage = message.substring("/broadcast ".length).trim();
-
-    if (!broadcastMessage) {
-      return "❌ *Format Salah*\n\nGunakan: /broadcast <pesan>\n\n*Contoh:*\n/broadcast Promo spesial hari ini! Diskon 20%";
-    }
-
-    const customerIds = await this.sessionManager.getAllCustomerIds();
-
-    this.log(adminId, "broadcast_sent", {
-      recipientCount: customerIds.length,
-      messageLength: broadcastMessage.length,
-    });
-
-    return {
-      message: `✅ *Broadcast Dikirim*\n\nPesan akan dikirim ke ${customerIds.length} customer.`,
-      broadcast: true,
-      recipients: customerIds,
-      broadcastMessage: `📢 *Pengumuman*\n\n${broadcastMessage}`,
-    };
   }
 
   /**

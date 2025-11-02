@@ -790,7 +790,7 @@ class AdminHandler extends BaseHandler {
   /**
    * /stockreport - Show current stock for all products
    */
-  async handleStockReport(adminId) {
+  async handleStockReport(_adminId) {
     const InventoryManager = require("../services/inventory/InventoryManager");
     const inventoryManager = new InventoryManager();
 
@@ -836,20 +836,20 @@ class AdminHandler extends BaseHandler {
       return "❌ Gagal generate sales report.";
     }
 
-    let message = `*📊 SALES REPORT*\n*${report.period}*\n\n`;
+    let response = `*📊 SALES REPORT*\n*${report.period}*\n\n`;
 
     if (report.totalSales === 0) {
-      message += "❌ Belum ada penjualan.";
+      response += "❌ Belum ada penjualan.";
     } else {
-      message += `💰 *Total penjualan:* ${report.totalSales}\n\n`;
-      message += "*Breakdown per produk:*\n";
+      response += `💰 *Total penjualan:* ${report.totalSales}\n\n`;
+      response += "*Breakdown per produk:*\n";
 
       for (const [productId, count] of Object.entries(report.salesByProduct)) {
-        message += `📦 ${productId}: ${count}\n`;
+        response += `📦 ${productId}: ${count}\n`;
       }
     }
 
-    return message;
+    return response;
   }
 
   /**

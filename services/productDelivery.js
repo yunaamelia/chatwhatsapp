@@ -56,9 +56,6 @@ class ProductDelivery {
    */
   archiveSoldCredential(productId, credential) {
     try {
-      const InventoryManager = require("../src/services/inventory/InventoryManager");
-      const inventoryManager = new InventoryManager();
-
       // Archive will be done when we know orderId and customerId
       // For now, just mark it in temporary storage
       this.lastSoldCredential = { productId, credential };
@@ -143,14 +140,9 @@ class ProductDelivery {
   archiveToSalesLedger(productId, credential, orderId, customerId) {
     try {
       const InventoryManager = require("../src/services/inventory/InventoryManager");
-      const inventoryManager = new InventoryManager();
+      const manager = new InventoryManager();
 
-      inventoryManager.archiveSoldCredential(
-        productId,
-        credential,
-        orderId,
-        customerId
-      );
+      manager.archiveSoldCredential(productId, credential, orderId, customerId);
 
       console.log(
         `📦 Archived to sales ledger: ${productId} for order ${orderId}`

@@ -10,8 +10,19 @@ A professional WhatsApp chatbot designed to help you serve customers with the fa
 - 💬 **Interactive Menu**: Easy-to-use menu system
 - 👥 **Multi-Customer Support**: Handles multiple customers simultaneously
 - 🔄 **Session Management**: Keeps track of each customer's shopping session
+- 🤖 **AI-Powered Fallback**: Gemini 2.5 Flash Lite for typo correction, Q&A, and smart recommendations
 - 💾 **Lightweight**: Optimized for VPS with 1 vCPU and 2GB RAM
 - 🔐 **Secure**: Uses WhatsApp's end-to-end encryption
+
+### ✨ NEW: AI Features
+
+- **Typo Correction**: Automatically fixes customer typos ("netflx" → "netflix")
+- **Product Q&A**: Answers customer questions about products naturally
+- **Smart Recommendations**: AI-powered personalized product suggestions
+- **Admin AI Generator**: `/generate-desc` command to create compelling product descriptions
+- **Cost-Effective**: ~$0.00005 per call, 97% cheaper than GPT-4o
+
+See [docs/AI_INTEGRATION.md](docs/AI_INTEGRATION.md) for detailed AI documentation.
 
 ## 📦 Products Included
 
@@ -221,6 +232,30 @@ const products = {
 ### Customizing Messages
 
 Edit `chatbotLogic.js` to customize bot responses and messages.
+
+### 🤖 AI Setup (Optional)
+
+Enable AI-powered features for enhanced customer experience:
+
+1. **Get Google AI API Key**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+2. **Configure `.env`**:
+   ```bash
+   AI_ENABLE=true
+   GOOGLE_API_KEY=AIzaSyD...your_key_here
+   ```
+
+3. **Restart bot**: `pm2 restart whatsapp-bot`
+
+**Features**:
+- Typo correction: "netflx" → "netflix"
+- Product Q&A: "apa bedanya netflix sama spotify?"
+- Smart recommendations: "kasih saran produk musik"
+- Admin generator: `/generate-desc netflix`
+
+**Cost**: ~$0.00005 per call (<$2/month for 5,000 customers)
+
+See [docs/AI_INTEGRATION.md](docs/AI_INTEGRATION.md) for complete AI documentation.
 
 ## 📊 Performance Optimization
 

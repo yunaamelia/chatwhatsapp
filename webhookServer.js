@@ -43,11 +43,31 @@ class WebhookServer {
   setupRoutes() {
     // Health check endpoint
     this.app.get("/health", (req, res) => {
+      const memUsage = process.memoryUsage();
+      const uptimeSeconds = process.uptime();
+
       res.json({
         status: "ok",
         timestamp: new Date().toISOString(),
-        redis: this.sessionManager.useRedis ? "connected" : "disabled",
-        whatsapp: this.whatsappClient.info ? "connected" : "disconnected",
+        uptime: {
+          seconds: Math.floor(uptimeSeconds),
+          formatted: `${Math.floor(uptimeSeconds / 3600)}h ${Math.floor(
+            (uptimeSeconds % 3600) / 60
+          )}m`,
+        },
+        memory: {
+          used: `${(memUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`,
+          total: `${(memUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`,
+          utilization: `${(
+            (memUsage.heapUsed / memUsage.heapTotal) *
+            100
+          ).toFixed(1)}%`,
+        },
+        services: {
+          redis: this.sessionManager.useRedis ? "connected" : "fallback",
+          whatsapp: this.whatsappClient.info ? "connected" : "initializing",
+        },
+        environment: process.env.NODE_ENV || "development",
       });
     });
 

@@ -349,6 +349,27 @@ class SessionManager {
       await redisClient.disconnect();
     }
   }
+
+  /**
+   * Get count of active sessions
+   * @returns {number} Active session count
+   */
+  getActiveSessionCount() {
+    if (this.useRedis) {
+      // For Redis, we can't easily count without scanning all keys
+      // Return in-memory count as estimate
+      return this.sessions.size;
+    }
+    return this.sessions.size;
+  }
+
+  /**
+   * Get all active customer IDs
+   * @returns {Array} Array of customer IDs
+   */
+  getAllCustomerIds() {
+    return Array.from(this.sessions.keys());
+  }
 }
 
 module.exports = SessionManager;

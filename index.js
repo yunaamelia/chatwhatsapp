@@ -11,6 +11,7 @@ const SessionManager = require("./sessionManager");
 const ChatbotLogic = require("./chatbotLogic");
 const MessageRouter = require("./lib/messageRouter");
 const WebhookServer = require("./webhookServer");
+const logRotationManager = require("./lib/logRotationManager");
 
 // Initialize components
 const sessionManager = new SessionManager();
@@ -19,6 +20,9 @@ const chatbotLogic = new ChatbotLogic(sessionManager);
 // Initialize session manager (connect to Redis)
 (async () => {
   await sessionManager.initialize();
+
+  // Start log rotation manager
+  logRotationManager.start();
 })();
 
 // Pairing code configuration
@@ -141,6 +145,9 @@ client.on("error", (error) => {
 // Graceful shutdown handlers
 const shutdown = async (signal) => {
   console.log(`\n\n⚠️ Received ${signal}, shutting down gracefully...`);
+
+  // Stop log rotation
+  logRotationManager.stop();
 
   // Close Redis connection
   await sessionManager.shutdown();

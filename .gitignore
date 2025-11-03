@@ -28,11 +28,16 @@ payment_qris/*
 Thumbs.db
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# Allow .vscode settings for team collaboration
+# .vscode/ excluded but allow specific files
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/cspell-indonesian.json
 
 # Temporary files
 *.tmp

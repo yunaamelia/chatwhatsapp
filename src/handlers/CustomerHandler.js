@@ -4,7 +4,7 @@
  */
 
 const BaseHandler = require("./BaseHandler");
-const { getProductById, getAllProducts } = require("../../config");
+const { getProductById, getAllProducts, stockManager } = require("../../config");
 const UIMessages = require("../../lib/uiMessages");
 const FuzzySearch = require("../utils/FuzzySearch");
 const { SessionSteps } = require("../utils/Constants");
@@ -164,7 +164,7 @@ class CustomerHandler extends BaseHandler {
    * Show available products
    */
   async showProducts() {
-    const { stockManager } = require("../../config");
+    console.log(`[CustomerHandler] showProducts() - stockManager: ${stockManager ? 'YES' : 'NO'}`);
     const productList = await this.productService.formatProductList(
       this.reviewService,
       stockManager

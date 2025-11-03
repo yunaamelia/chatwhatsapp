@@ -6,6 +6,7 @@
 const BaseHandler = require("./BaseHandler");
 const ProductService = require("../services/product/ProductService");
 const FuzzySearch = require("../utils/FuzzySearch");
+const { stockManager } = require("../../config");
 
 class ProductHandler extends BaseHandler {
   constructor(sessionManager, logger) {
@@ -62,7 +63,7 @@ class ProductHandler extends BaseHandler {
    * @returns {Promise<string>}
    */
   async listProducts() {
-    const { stockManager } = require("../../config");
+    console.log(`[ProductHandler] listProducts() - stockManager: ${stockManager ? 'YES' : 'NO'}`);
     return await this.productService.formatProductList(null, stockManager);
   }
 

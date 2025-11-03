@@ -168,6 +168,7 @@ class ProductService {
    * @returns {string|Promise<string>} Formatted list
    */
   async formatProductList(reviewService = null, stockManager = null) {
+    console.log(`[ProductService] formatProductList called - stockManager: ${stockManager ? 'YES' : 'NO'}`);
     let message = "*🛍️ Katalog Produk Premium*\n\n";
 
     // Premium Accounts
@@ -180,6 +181,9 @@ class ProductService {
       let stock = product.stock;
       if (stockManager) {
         stock = await stockManager.getStock(product.id);
+        console.log(`[ProductService] Stock for ${product.id} from Redis: ${stock}`);
+      } else {
+        console.log(`[ProductService] Stock for ${product.id} from config (static): ${stock}`);
       }
       
       const stockStatus = stock > 0 ? `✅ (${stock})` : "❌ Stok Habis";
@@ -211,6 +215,9 @@ class ProductService {
       let stock = product.stock;
       if (stockManager) {
         stock = await stockManager.getStock(product.id);
+        console.log(`[ProductService] Stock for ${product.id} from Redis: ${stock}`);
+      } else {
+        console.log(`[ProductService] Stock for ${product.id} from config (static): ${stock}`);
       }
       
       const stockStatus = stock > 0 ? `✅ (${stock})` : "❌ Stok Habis";

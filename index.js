@@ -129,14 +129,17 @@ client.on("ready", () => {
   paymentReminderService = new PaymentReminderService(client, sessionManager);
   paymentReminderService.start();
 
+  // Store cleanup intervals globally for proper cleanup on shutdown
+  global.cleanupIntervals = {};
+
   // Clean up inactive sessions every 10 minutes
-  setInterval(() => {
+  global.cleanupIntervals.sessionCleanup = setInterval(() => {
     sessionManager.cleanupSessions();
     console.log("🧹 Cleaned up inactive sessions");
   }, 10 * 60 * 1000);
 
   // Cleanup rate limit data every 5 minutes
-  setInterval(() => {
+  global.cleanupIntervals.rateLimitCleanup = setInterval(() => {
     sessionManager.cleanupRateLimits();
     console.log("🧹 Cleaned up expired rate limit data");
   }, 5 * 60 * 1000);
@@ -171,6 +174,12 @@ client.on("error", (error) => {
 // Graceful shutdown handlers
 const shutdown = async (signal) => {
   console.log(`\n\n⚠️ Received ${signal}, shutting down gracefully...`);
+
+  // Clear cleanup intervals (prevents memory leaks from PR #1 fix)
+  if (global.cleanupIntervals) {
+    clearInterval(global.cleanupIntervals.sessionCleanup);
+    clearInterval(global.cleanupIntervals.rateLimitCleanup);
+  }
 
   // Stop payment reminder service
   if (paymentReminderService) {

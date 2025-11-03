@@ -157,6 +157,14 @@ function updateSetting(key, value) {
   };
 }
 
+/**
+ * Get all system settings
+ * @returns {Object} System settings object
+ */
+function getAllSettings() {
+  return systemSettings;
+}
+
 module.exports = {
   // Configs
   systemSettings,
@@ -175,4 +183,5 @@ module.exports = {
   editProduct,
   removeProduct,
   updateSetting,
+  getAllSettings,
 };

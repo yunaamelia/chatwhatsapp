@@ -46,10 +46,75 @@ class AdminHandler extends BaseHandler {
       this.xenditService,
       logger
     );
+
+    // Command routing map for O(1) lookup (from PR #1 optimization)
+    this.commandRoutes = this._initializeCommandRoutes();
   }
 
   /**
-   * Main handler - routes admin commands
+   * Initialize command routing map for better performance
+   * Uses O(1) map lookup instead of O(n) sequential if checks
+   * @private
+   */
+  _initializeCommandRoutes() {
+    return {
+      // Order & Communication
+      "/approve": (adminId, msg) =>
+        this.orderHandler.handleApprove(adminId, msg),
+      "/broadcast": (adminId, msg) =>
+        this.orderHandler.handleBroadcast(adminId, msg),
+
+      // Analytics & Stats
+      "/stats": async (adminId, msg) => {
+        const parts = msg.split(/\s+/);
+        const days = parts.length > 1 ? parseInt(parts[1]) || 30 : 30;
+        return await this.analyticsHandler.handleStats(adminId, days);
+      },
+      "/status": (adminId) => this.handleStatus(adminId),
+
+      // Product Management
+      "/stock": (adminId, msg) => this.handleStock(adminId, msg),
+      "/addproduct": (adminId, msg) => this.handleAddProduct(adminId, msg),
+      "/editproduct": (adminId, msg) => this.handleEditProduct(adminId, msg),
+      "/removeproduct": (adminId, msg) =>
+        this.handleRemoveProduct(adminId, msg),
+      "/generate-desc": (adminId, msg) =>
+        this.handleGenerateDescription(adminId, msg),
+
+      // Inventory
+      "/addstock-bulk": (adminId, msg) =>
+        this.inventoryHandler.handleAddStockBulk(adminId, msg),
+      "/addstock": (adminId, msg) =>
+        this.inventoryHandler.handleAddStock(adminId, msg),
+      "/stockreport": (adminId) =>
+        this.inventoryHandler.handleStockReport(adminId),
+      "/salesreport": (adminId, msg) =>
+        this.inventoryHandler.handleSalesReport(adminId, msg),
+
+      // Promo
+      "/createpromo": (adminId, msg) =>
+        this.promoHandler.handleCreatePromo(adminId, msg),
+      "/listpromos": (adminId) => this.promoHandler.handleListPromos(adminId),
+      "/deletepromo": (adminId, msg) =>
+        this.promoHandler.handleDeletePromo(adminId, msg),
+      "/promostats": (adminId, msg) =>
+        this.promoHandler.handlePromoStats(adminId, msg),
+
+      // Reviews
+      "/reviews": (adminId, msg) =>
+        this.reviewHandler.handleViewReviews(adminId, msg),
+      "/reviewstats": (adminId) =>
+        this.reviewHandler.handleReviewStats(adminId),
+      "/deletereview": (adminId, msg) =>
+        this.reviewHandler.handleDeleteReview(adminId, msg),
+
+      // Settings
+      "/settings": (adminId, msg) => this.handleSettings(adminId, msg),
+    };
+  }
+
+  /**
+   * Main handler - routes admin commands with O(1) map lookup
    */
   async handle(adminId, message) {
     // Check admin authorization
@@ -62,98 +127,31 @@ class AdminHandler extends BaseHandler {
       return UIMessages.unauthorized();
     }
 
+    // Null/undefined check (from PR #1 bug fix)
+    if (!message || typeof message !== "string") {
+      return this.showAdminHelp();
+    }
+
     try {
-      // Route to appropriate admin command handler
-      if (message.startsWith("/approve ")) {
-        return await this.orderHandler.handleApprove(adminId, message);
-      }
-
-      if (message.startsWith("/broadcast ")) {
-        return await this.orderHandler.handleBroadcast(adminId, message);
-      }
-
-      if (message.startsWith("/stats")) {
-        const parts = message.split(/\s+/);
-        const days = parts.length > 1 ? parseInt(parts[1]) || 30 : 30;
-        return await this.analyticsHandler.handleStats(adminId, days);
-      }
-
-      if (message.startsWith("/status")) {
-        return this.handleStatus(adminId);
-      }
-
-      if (message.startsWith("/stock")) {
-        return this.handleStock(adminId, message);
-      }
-
-      if (message.startsWith("/addproduct")) {
-        return await this.handleAddProduct(adminId, message);
-      }
-
-      if (message.startsWith("/editproduct")) {
-        return this.handleEditProduct(adminId, message);
-      }
-
-      if (message.startsWith("/removeproduct")) {
-        return this.handleRemoveProduct(adminId, message);
-      }
-
-      if (message.startsWith("/settings")) {
-        return await this.handleSettings(adminId, message);
-      }
-
-      if (message.startsWith("/generate-desc")) {
-        return await this.handleGenerateDescription(adminId, message);
-      }
-
-      if (message.startsWith("/addstock-bulk ")) {
-        return await this.inventoryHandler.handleAddStockBulk(adminId, message);
-      }
-
-      if (message.startsWith("/addstock ")) {
-        return await this.inventoryHandler.handleAddStock(adminId, message);
-      }
-
-      if (message.startsWith("/stockreport")) {
-        return await this.inventoryHandler.handleStockReport(adminId);
-      }
-
-      if (message.startsWith("/salesreport")) {
-        return await this.inventoryHandler.handleSalesReport(adminId, message);
-      }
-
-      if (message.startsWith("/createpromo ")) {
-        return this.promoHandler.handleCreatePromo(adminId, message);
-      }
-
-      if (message.startsWith("/listpromos")) {
-        return this.promoHandler.handleListPromos(adminId);
-      }
-
-      if (message.startsWith("/deletepromo ")) {
-        return this.promoHandler.handleDeletePromo(adminId, message);
-      }
-
-      if (message.startsWith("/promostats ")) {
-        return this.promoHandler.handlePromoStats(adminId, message);
-      }
-
-      if (message.startsWith("/reviews ")) {
-        return this.reviewHandler.handleViewReviews(adminId, message);
-      }
-
-      if (message === "/reviewstats") {
-        return this.reviewHandler.handleReviewStats(adminId);
-      }
-
-      if (message.startsWith("/deletereview ")) {
-        return this.reviewHandler.handleDeleteReview(adminId, message);
-      }
-
-      // Check if admin is in bulk add mode
+      // Check if admin is in bulk add mode (special state)
       const step = await this.sessionManager.getStep(adminId);
       if (step === "admin_bulk_add") {
         return await this.inventoryHandler.processBulkAdd(adminId, message);
+      }
+
+      // Parse command once to avoid redundant operations
+      const command = message.split(/\s+/)[0];
+
+      // Try exact match first (O(1) lookup)
+      if (this.commandRoutes[command]) {
+        return await this.commandRoutes[command](adminId, message);
+      }
+
+      // Try prefix match for commands with parameters
+      for (const [route, handler] of Object.entries(this.commandRoutes)) {
+        if (message.startsWith(route + " ") || message === route) {
+          return await handler(adminId, message);
+        }
       }
 
       // Unknown admin command

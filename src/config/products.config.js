@@ -1,11 +1,9 @@
 /**
  * Products Configuration
  * Product catalog and inventory
+ * NOTE: Stock values are managed by RedisStockManager, not from this config
+ * Initial stock will be set to 0 for new products (admin must set stock manually)
  */
-
-// Stock values from environment
-const DEFAULT_STOCK = parseInt(process.env.DEFAULT_STOCK) || 10;
-const VCC_STOCK = parseInt(process.env.VCC_STOCK) || 5;
 
 const products = {
   premiumAccounts: [
@@ -14,7 +12,7 @@ const products = {
       name: "Netflix Premium Account (1 Month)",
       price: 15800,
       description: "Full HD streaming, 4 screens",
-      stock: DEFAULT_STOCK,
+      stock: 0, // Initial stock (will be overridden by Redis)
       category: "premium",
     },
     {
@@ -22,7 +20,7 @@ const products = {
       name: "Spotify Premium Account (1 Month)",
       price: 15800,
       description: "Ad-free music, offline download",
-      stock: DEFAULT_STOCK,
+      stock: 0, // Initial stock (will be overridden by Redis)
       category: "premium",
     },
     {
@@ -30,7 +28,7 @@ const products = {
       name: "YouTube Premium Account (1 Month)",
       price: 15800,
       description: "Ad-free videos, background play",
-      stock: DEFAULT_STOCK,
+      stock: 0, // Initial stock (will be overridden by Redis)
       category: "premium",
     },
     {
@@ -38,7 +36,7 @@ const products = {
       name: "Disney+ Premium Account (1 Month)",
       price: 15800,
       description: "HD streaming, all content",
-      stock: DEFAULT_STOCK,
+      stock: 0, // Initial stock (will be overridden by Redis)
       category: "premium",
     },
   ],
@@ -49,7 +47,7 @@ const products = {
       name: "Virtual Credit Card - Basic",
       price: 15800,
       description: "Pre-loaded $10 balance",
-      stock: VCC_STOCK,
+      stock: 0, // Initial stock (will be overridden by Redis)
       category: "vcc",
     },
     {
@@ -57,7 +55,7 @@ const products = {
       name: "Virtual Credit Card - Standard",
       price: 15800,
       description: "Pre-loaded $25 balance",
-      stock: VCC_STOCK,
+      stock: 0, // Initial stock (will be overridden by Redis)
       category: "vcc",
     },
   ],
@@ -65,6 +63,6 @@ const products = {
 
 module.exports = {
   products,
-  DEFAULT_STOCK,
-  VCC_STOCK,
+  DEFAULT_STOCK: 0, // Deprecated - use Redis stock manager
+  VCC_STOCK: 0, // Deprecated - use Redis stock manager
 };

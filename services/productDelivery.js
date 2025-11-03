@@ -95,9 +95,10 @@ class ProductDelivery {
    * @param {Array} cart - Cart items
    * @returns {Object} Delivery result
    */
-  deliverProducts(customerId, orderId, cart) {
+  async deliverProducts(customerId, orderId, cart) {
     const deliveredProducts = [];
     const failedProducts = [];
+    const { decrementStock } = require("../config");
 
     for (const item of cart) {
       const credentials = this.getProductCredentials(item.id);
@@ -107,6 +108,22 @@ class ProductDelivery {
           product: item,
           credentials: credentials,
         });
+
+        // Decrement stock (realtime with Redis)
+        try {
+          const stockResult = await decrementStock(item.id, 1, orderId);
+          if (stockResult.success) {
+            console.log(
+              `✅ Stock decremented for ${item.id}: ${stockResult.newStock} remaining`
+            );
+          } else {
+            console.warn(
+              `⚠️ Stock decrement failed for ${item.id}: ${stockResult.message}`
+            );
+          }
+        } catch (error) {
+          console.error(`❌ Error decrementing stock for ${item.id}:`, error);
+        }
 
         // Archive to sales ledger
         this.archiveToSalesLedger(

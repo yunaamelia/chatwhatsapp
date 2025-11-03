@@ -8,9 +8,11 @@ const appConfig = require("./src/config/app.config");
 const paymentConfig = require("./src/config/payment.config");
 const productsConfig = require("./src/config/products.config");
 const ProductService = require("./src/services/product/ProductService");
+const RedisStockManager = require("./src/services/inventory/RedisStockManager");
 
 // Initialize product service for legacy functions
 const productService = new ProductService();
+const stockManager = new RedisStockManager();
 
 // Re-export system settings (flatten for backward compatibility)
 const systemSettings = {
@@ -62,33 +64,44 @@ function getProductById(productId) {
   return productService.getProductById(productId);
 }
 
-function formatProductList() {
-  return productService.formatProductList();
+async function formatProductList(reviewService = null) {
+  // Pass stockManager for realtime stock display
+  return await productService.formatProductList(reviewService, stockManager);
 }
 
-function isInStock(productId) {
-  return productService.isInStock(productId);
+async function isInStock(productId) {
+  return await stockManager.isInStock(productId);
 }
 
-function setStock(productId, quantity) {
-  const success = productService.setStock(productId, quantity);
+async function setStock(productId, quantity, reason = "manual_update") {
+  const product = productService.getProductById(productId);
+  if (!product) {
+    return {
+      success: false,
+      message: `❌ Produk tidak ditemukan: ${productId}`,
+    };
+  }
+
+  const oldStock = await stockManager.getStock(productId);
+  const success = await stockManager.setStock(productId, quantity, reason);
+
   if (success) {
-    const product = productService.getProductById(productId);
     return {
       success: true,
       product: product,
-      oldStock: quantity, // Cannot track old stock in new system
+      oldStock: oldStock,
       newStock: quantity,
     };
   }
+
   return {
     success: false,
-    message: `❌ Produk tidak ditemukan: ${productId}`,
+    message: `❌ Gagal update stok: ${productId}`,
   };
 }
 
-function decrementStock(productId) {
-  return productService.decrementStock(productId);
+async function decrementStock(productId, quantity = 1, orderId = null) {
+  return await stockManager.decrementStock(productId, quantity, orderId);
 }
 
 function addProduct(productData) {
@@ -165,6 +178,49 @@ function getAllSettings() {
   return systemSettings;
 }
 
+/**
+ * Initialize stock manager
+ * @returns {Promise<void>}
+ */
+async function initializeStockManager() {
+  await stockManager.initialize();
+}
+
+/**
+ * Get realtime stock for a product
+ * @param {string} productId
+ * @returns {Promise<number>}
+ */
+async function getStock(productId) {
+  return await stockManager.getStock(productId);
+}
+
+/**
+ * Get all products with realtime stock
+ * @returns {Promise<Array>}
+ */
+async function getAllProductsWithStock() {
+  return await stockManager.getAllProductsWithStock();
+}
+
+/**
+ * Sync stock from config to Redis (admin only)
+ * @param {boolean} confirm
+ * @returns {Promise<Object>}
+ */
+async function syncStockFromConfig(confirm = false) {
+  return await stockManager.syncFromConfig(confirm);
+}
+
+/**
+ * Reset all stock to config defaults (admin only)
+ * @param {boolean} confirm
+ * @returns {Promise<Object>}
+ */
+async function resetAllStock(confirm = false) {
+  return await stockManager.resetAllStock(confirm);
+}
+
 module.exports = {
   // Configs
   systemSettings,
@@ -179,9 +235,15 @@ module.exports = {
   isInStock,
   setStock,
   decrementStock,
+  getStock,
   addProduct,
   editProduct,
   removeProduct,
   updateSetting,
   getAllSettings,
+  initializeStockManager,
+  getAllProductsWithStock,
+  syncStockFromConfig,
+  resetAllStock,
+  stockManager,
 };

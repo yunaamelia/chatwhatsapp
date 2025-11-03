@@ -123,9 +123,16 @@ class CustomerCheckoutHandler extends BaseHandler {
       };
     }
 
-    // Check stock availability
-    const { isInStock } = require("../../config");
-    const outOfStockItems = cart.filter((item) => !isInStock(item.id));
+    // Check stock availability (realtime from Redis)
+    const { stockManager } = require("../../config");
+    const outOfStockItems = [];
+
+    for (const item of cart) {
+      const inStock = await stockManager.isInStock(item.id);
+      if (!inStock) {
+        outOfStockItems.push(item);
+      }
+    }
 
     if (outOfStockItems.length > 0) {
       const itemNames = outOfStockItems.map((item) => item.name).join(", ");

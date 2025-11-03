@@ -61,6 +61,10 @@ const messageRouter = new MessageRouter(client, sessionManager, chatbotLogic);
     console.log("🔧 Starting initialization sequence...");
     await sessionManager.initialize();
 
+    // Initialize stock manager
+    const { initializeStockManager } = require("./config");
+    await initializeStockManager();
+
     // Start log rotation manager
     logRotationManager.start();
 

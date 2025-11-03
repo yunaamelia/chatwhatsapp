@@ -59,10 +59,11 @@ class ProductHandler extends BaseHandler {
 
   /**
    * List all products
-   * @returns {string}
+   * @returns {Promise<string>}
    */
-  listProducts() {
-    return this.productService.formatProductList();
+  async listProducts() {
+    const { stockManager } = require("../../config");
+    return await this.productService.formatProductList(null, stockManager);
   }
 
   /**

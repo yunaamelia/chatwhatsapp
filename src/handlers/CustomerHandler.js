@@ -138,7 +138,7 @@ class CustomerHandler extends BaseHandler {
       console.log(
         `[CustomerHandler] Step set to BROWSING, returning product list`
       );
-      return this.showProducts();
+      return await this.showProducts();
     }
 
     if (message === "2" || message === "cart") {
@@ -163,9 +163,11 @@ class CustomerHandler extends BaseHandler {
   /**
    * Show available products
    */
-  showProducts() {
-    const productList = this.productService.formatProductList(
-      this.reviewService
+  async showProducts() {
+    const { stockManager } = require("../../config");
+    const productList = await this.productService.formatProductList(
+      this.reviewService,
+      stockManager
     );
     return UIMessages.browsingInstructions(productList);
   }

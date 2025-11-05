@@ -92,7 +92,7 @@ if (global.cleanupIntervals) {
 **Location:** `src/handlers/AdminHandler.js` (lines 50-118, 149-151)
 
 **What was improved:**
-- **Before:** Sequential `if/startsWith` checks (O(n) complexity)
+- **Before:** Sequential `if/startsWith` checks (O(n) complexity, where n = number of admin commands)
 - **After:** Command map with O(1) lookup
 
 **Implementation:**
@@ -122,7 +122,7 @@ if (this.commandRoutes[command]) {
 - PR #1 optimization comment present
 
 **Performance Benefit:**
-- **Before:** Up to 20+ sequential checks per message
+- **Before:** Up to 20+ sequential checks per message (n = number of admin commands)
 - **After:** Single map lookup = instant routing
 - **Speedup:** O(n) → O(1) for command dispatch
 
@@ -164,8 +164,9 @@ class ErrorMessages {
 
 **Key Features:**
 ```javascript
+// Example from src/utils/ValidationHelpers.js
 class ValidationHelpers {
-  // Fixed from PR #1: Now properly rejects decimals
+  // Fixed from PR #1: Now properly rejects decimals (see line 53-56)
   static isPositiveInteger(value) {
     const num = Number(value);
     return !isNaN(num) && num > 0 && Number.isInteger(num);
@@ -303,7 +304,7 @@ No security issues introduced by PR #1 changes.
 
 ## Acknowledgments
 
-**Special thanks to GitHub Copilot coding agent** for:
+**Special thanks to the automated code review agent** (referred to as "GitHub Copilot coding agent" in the original PR #1) for:
 - Thorough code review
 - Critical bug fixes
 - Performance optimizations

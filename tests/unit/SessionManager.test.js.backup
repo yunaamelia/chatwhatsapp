@@ -1,0 +1,223 @@
+/**
+ * SessionManager Unit Tests
+ *
+ * Tests session management, rate limiting, and cleanup functionality
+ * Critical for maintaining customer state across messages
+ */
+
+const SessionManager = require("../../sessionManager");
+
+// Mock console to reduce noise in tests
+global.console = {
+  ...console,
+  log: jest.fn(),
+  warn: jest.fn(),
+};
+
+describe("SessionManager", () => {
+  let sessionManager;
+
+  beforeEach(() => {
+    sessionManager = new SessionManager();
+  });
+
+  afterEach(() => {
+    sessionManager = null;
+  });
+
+  describe("getSession", () => {
+    test("When getting new session, Then should create default session", () => {
+      // Arrange
+      const customerId = "628123456789@c.us";
+
+      // Act
+      const session = sessionManager.getSession(customerId);
+
+      // Assert
+      expect(session).toBeDefined();
+      expect(session.customerId).toBe(customerId);
+      expect(session.cart).toEqual([]);
+      expect(session.step).toBe("menu");
+      expect(session.lastActivity).toBeDefined();
+    });
+
+    test("When getting existing session, Then should return same instance", () => {
+      // Arrange
+      const customerId = "628123456789@c.us";
+      const session1 = sessionManager.getSession(customerId);
+      session1.testProperty = "test-value";
+
+      // Act
+      const session2 = sessionManager.getSession(customerId);
+
+      // Assert
+      expect(session2.testProperty).toBe("test-value");
+      expect(session1).toBe(session2);
+    });
+
+    test("When multiple customers, Then sessions should be isolated", () => {
+      // Arrange
+      const customer1 = "628111111111@c.us";
+      const customer2 = "628222222222@c.us";
+
+      // Act
+      const session1 = sessionManager.getSession(customer1);
+      const session2 = sessionManager.getSession(customer2);
+
+      session1.cart = [{ id: "netflix", quantity: 1 }];
+      session2.cart = [{ id: "spotify", quantity: 2 }];
+
+      // Assert
+      expect(session1.cart).not.toEqual(session2.cart);
+      expect(session1.cart.length).toBe(1);
+      expect(session2.cart.length).toBe(1);
+      expect(session1.cart[0].id).toBe("netflix");
+      expect(session2.cart[0].id).toBe("spotify");
+    });
+  });
+
+  describe("setStep", () => {
+    test("When setting step, Then should update session step", () => {
+      // Arrange
+      const customerId = "628123456789@c.us";
+
+      // Act
+      sessionManager.setStep(customerId, "browsing");
+      const session = sessionManager.getSession(customerId);
+
+      // Assert
+      expect(session.step).toBe("browsing");
+    });
+
+    test("When setting step, Then should update lastActivity", () => {
+      // Arrange
+      const customerId = "628123456789@c.us";
+      const session = sessionManager.getSession(customerId);
+      const oldActivity = session.lastActivity;
+
+      // Wait 10ms
+      const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      // Act
+      return delay(10).then(() => {
+        sessionManager.setStep(customerId, "checkout");
+
+        // Assert
+        expect(session.lastActivity).toBeGreaterThan(oldActivity);
+      });
+    });
+  });
+
+  describe("Rate Limiting", () => {
+    test("When under rate limit, Then should allow messages", () => {
+      // Arrange
+      const customerId = "628123456789@c.us";
+
+      // Act: Send 5 messages (under limit of 20)
+      const results = [];
+      for (let i = 0; i < 5; i++) {
+        results.push(sessionManager.canSendMessage(customerId));
+      }
+
+      // Assert
+      expect(results.every((r) => r === true)).toBe(true);
+    });
+
+    test("When over rate limit, Then should block messages", () => {
+      // Arrange
+      const customerId = "628123456789@c.us";
+
+      // Act: Send 25 messages (over limit of 20)
+      const results = [];
+      for (let i = 0; i < 25; i++) {
+        results.push(sessionManager.canSendMessage(customerId));
+      }
+
+      // Assert: First 20 allowed, rest blocked
+      expect(results.slice(0, 20).every((r) => r === true)).toBe(true);
+      expect(results.slice(20).every((r) => r === false)).toBe(true);
+    });
+
+    test("When rate limit window expires, Then should reset counter", () => {
+      // Arrange
+      const customerId = "628123456789@c.us";
+
+      // Mock Date.now to control time
+      const originalNow = Date.now;
+      let currentTime = 1000000;
+      Date.now = jest.fn(() => currentTime);
+
+      // Act: Hit rate limit
+      for (let i = 0; i < 20; i++) {
+        sessionManager.canSendMessage(customerId);
+      }
+
+      // Fast forward 61 seconds (past 60s window)
+      currentTime += 61000;
+
+      const canSendAfterReset = sessionManager.canSendMessage(customerId);
+
+      // Cleanup
+      Date.now = originalNow;
+
+      // Assert
+      expect(canSendAfterReset).toBe(true);
+    });
+  });
+
+  describe("cleanupSessions", () => {
+    test("When session is active, Then should NOT be cleaned up", () => {
+      // Arrange
+      const customerId = "628123456789@c.us";
+      sessionManager.getSession(customerId);
+
+      // Act
+      sessionManager.cleanupSessions();
+
+      // Assert
+      const session = sessionManager.getSession(customerId);
+      expect(session).toBeDefined();
+    });
+
+    test("When session is inactive for 30+ minutes, Then should be cleaned up", () => {
+      // Arrange
+      const customerId = "628123456789@c.us";
+      const session = sessionManager.getSession(customerId);
+
+      // Set lastActivity to 31 minutes ago
+      session.lastActivity = Date.now() - 31 * 60 * 1000;
+
+      // Act
+      sessionManager.cleanupSessions();
+
+      // Assert - Session should be cleaned up (implementation may vary)
+      // Note: Current implementation might not expose direct session check
+      sessionManager.cleanupSessions();
+      // If session exists after 2nd cleanup, it wasn't removed
+      const sessionAfter = sessionManager.sessions.get(customerId);
+      expect(sessionAfter).toBeUndefined();
+    });
+
+    test("When multiple sessions with mixed activity, Then should cleanup only inactive", () => {
+      // Arrange
+      const activeCustomer = "628111111111@c.us";
+      const inactiveCustomer = "628222222222@c.us";
+
+      sessionManager.getSession(activeCustomer);
+      const inactiveSession = sessionManager.getSession(inactiveCustomer);
+
+      // Make one inactive
+      inactiveSession.lastActivity = Date.now() - 31 * 60 * 1000;
+
+      // Act
+      sessionManager.cleanupSessions();
+
+      // Assert
+      const activeSession = sessionManager.getSession(activeCustomer);
+      const inactiveSessionCheck =
+        sessionManager.sessions.get(inactiveCustomer);
+      expect(activeSession).toBeDefined();
+      expect(inactiveSessionCheck).toBeUndefined();
+    });
+  });
+});

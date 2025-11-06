@@ -80,7 +80,7 @@ describe('Checkout Flow Integration', () => {
       const total = cart.reduce((sum, item) => sum + item.price, 0);
 
       const response = await customerHandler.handle(testCustomerId, 'cart', 'browsing');
-      expect(response).toContain('Total');
+      expect(response).toContain('TOTAL');
       expect(total).toBeGreaterThan(0);
     });
   });
@@ -93,7 +93,7 @@ describe('Checkout Flow Integration', () => {
       const response = await customerHandler.handle(testCustomerId, 'invalid-product-xyz', 'browsing');
       
       expect(response).toBeDefined();
-      expect(response.toLowerCase()).toContain('tidak ditemukan');
+      expect(response.toLowerCase()).toContain('tidak ada');
     });
 
     test('should handle checkout without items', async () => {
@@ -128,7 +128,7 @@ describe('Checkout Flow Integration', () => {
       // From browsing
       await customerHandler.handle(testCustomerId, '1', 'menu');
       const response = await customerHandler.handle(testCustomerId, 'menu', 'browsing');
-      expect(response).toContain('Selamat datang');
+      expect(response).toContain('MENU UTAMA');
 
       // From checkout
       await customerHandler.handle(testCustomerId, 'menu', 'checkout');

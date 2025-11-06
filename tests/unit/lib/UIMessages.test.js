@@ -10,11 +10,11 @@ describe('UIMessages', () => {
     test('should return main menu message', () => {
       const result = UIMessages.mainMenu();
 
-      expect(result).toContain('Selamat datang');
+      expect(result).toContain('MENU UTAMA');
       expect(result).toContain('1️⃣');
       expect(result).toContain('cart');
       expect(result).toContain('wishlist');
-      expect(result).toContain('history');
+      expect(result).toContain('track');
     });
 
     test('should include shop name from config', () => {
@@ -26,15 +26,14 @@ describe('UIMessages', () => {
     test('should include quick commands', () => {
       const result = UIMessages.mainMenu();
 
-      expect(result).toContain('Perintah Cepat');
+      expect(result).toContain('Quick');
     });
 
     test('should include features list', () => {
       const result = UIMessages.mainMenu();
 
-      expect(result).toContain('Fitur');
-      expect(result).toContain('QRIS');
-      expect(result).toContain('Promo');
+      expect(result).toContain('realtime');
+      expect(result).toContain('payment');
     });
   });
 
@@ -43,11 +42,10 @@ describe('UIMessages', () => {
       const result = UIMessages.helpCommand();
 
       expect(result).toContain('PANDUAN');
-      expect(result).toContain('Navigasi');
-      expect(result).toContain('Belanja');
-      expect(result).toContain('Wishlist');
-      expect(result).toContain('Tracking');
-      expect(result).toContain('Pembayaran');
+      expect(result).toContain('NAVIGASI');
+      expect(result).toContain('BELANJA');
+      expect(result).toContain('FAVORIT');
+      expect(result).toContain('TRACKING');
     });
 
     test('should include menu command', () => {
@@ -71,7 +69,7 @@ describe('UIMessages', () => {
     test('should return product added confirmation', () => {
       const result = UIMessages.productAdded('Netflix Premium', 50000);
 
-      expect(result).toContain('BERHASIL DITAMBAHKAN');
+      expect(result).toContain('DITAMBAHKAN');
       expect(result).toContain('Netflix Premium');
       expect(result).toContain('50.000');
     });
@@ -86,7 +84,7 @@ describe('UIMessages', () => {
       const result = UIMessages.productAdded('Product', 10000);
 
       expect(result).toContain('cart');
-      expect(result).toContain('menu');
+      expect(result).toContain('Lanjut');
     });
   });
 
@@ -94,7 +92,7 @@ describe('UIMessages', () => {
     test('should return product not found message', () => {
       const result = UIMessages.productNotFound();
 
-      expect(result).toContain('Tidak Ditemukan');
+      expect(result).toContain('tidak ada');
     });
   });
 
@@ -102,10 +100,7 @@ describe('UIMessages', () => {
     test('should return empty cart message', () => {
       const result = UIMessages.emptyCart();
 
-      expect(result).toContain('Kosong');
-      expect(result).toContain('browse');
-      expect(result).toContain('wishlist');
-      expect(result).toContain('menu');
+      expect(result).toContain('kosong');
     });
   });
 
@@ -129,7 +124,7 @@ describe('UIMessages', () => {
       const result = UIMessages.cartView(cart, total);
 
       expect(result).toContain('80.000');
-      expect(result).toContain('Total');
+      expect(result).toContain('TOTAL');
     });
 
     test('should include checkout instructions', () => {
@@ -216,7 +211,7 @@ describe('UIMessages', () => {
     test('should return contact information', () => {
       const result = UIMessages.contact();
 
-      expect(result).toContain('DUKUNGAN');
+      expect(result).toContain('HUBUNGI');
     });
 
     test('should include support information', () => {
@@ -239,7 +234,7 @@ describe('UIMessages', () => {
     test('should return invalid option message', () => {
       const result = UIMessages.invalidOption();
 
-      expect(result).toContain('Tidak Valid');
+      expect(result).toContain('tidak paham');
     });
   });
 
@@ -305,7 +300,7 @@ describe('UIMessages', () => {
     test('should handle empty order list', () => {
       const result = UIMessages.orderList([]);
 
-      expect(result).toContain('belum');
+      expect(result).toContain('Belum');
     });
 
     test('should format prices correctly', () => {

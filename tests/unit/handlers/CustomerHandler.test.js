@@ -85,7 +85,7 @@ describe("CustomerHandler", () => {
 
       // Assert
       expect(result).toBeDefined();
-      expect(result.toLowerCase()).toContain("tidak valid");
+      expect(result.toLowerCase()).toContain("tidak paham");
     });
 
     test("When input is null or undefined, Then should handle gracefully", async () => {
@@ -140,7 +140,7 @@ describe("CustomerHandler", () => {
 
       // Assert
       expect(result).toBeDefined();
-      expect(result.toLowerCase()).toContain("tidak ditemukan");
+      expect(result.toLowerCase()).toContain("tidak ada");
     });
 
     test("When selecting product with fuzzy match, Then should find closest match", async () => {
@@ -258,7 +258,7 @@ describe("CustomerHandler", () => {
 
       const result = await handler.handle(customerId, "menu", "browsing");
 
-      expect(result).toContain("Selamat datang");
+      expect(result).toContain("MENU UTAMA");
       expect(result).toBeDefined();
     });
 
